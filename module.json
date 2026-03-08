@@ -1,8 +1,8 @@
 {
-  "id": "wfrp4e-gm-toolkit",
-  "title": "GM Toolkit (WFRP4e)",
-  "description": "Utilities for WFRP4e GMs",
-  "version": "v9.1.1",
+  "id": "wfrp4e-gm-toolkit-dk-fix",
+  "title": "GM Toolkit (WFRP4e) - DK Fix",
+  "description": "Utilities for WFRP4e GMs - fork with opposed test advantage reconciliation fix",
+  "version": "9.1.2-dk1",
   "compatibility": {
     "minimum": "13",
     "maximum": "13",
@@ -12,6 +12,10 @@
     {
       "name": "Jagusti",
       "discord": "Jagusti",
+      "flags": {}
+    },
+    {
+      "name": "Deathkael83",
       "flags": {}
     }
   ],
@@ -92,10 +96,10 @@
     }
   ],
   "socket": true,
-  "url": "https://github.com/Jagusti/fvtt-wfrp4e-gmtoolkit",
-  "manifest": "https://github.com/Jagusti/fvtt-wfrp4e-gmtoolkit/releases/latest/download/module.json",
-  "download": "https://github.com/Jagusti/fvtt-wfrp4e-gmtoolkit/releases/download/v9.1.1/wfrp4e-gm-toolkit.zip",
-  "bugs": "https://github.com/Jagusti/fvtt-wfrp4e-gmtoolkit/issues",
-  "changelog": "https://github.com/Jagusti/fvtt-wfrp4e-gmtoolkit/releases",
-  "readme": "https://github.com/Jagusti/fvtt-wfrp4e-gmtoolkit/wiki"
+  "url": "https://github.com/Deathkael83/fvtt-wfrp4e-gmtoolkit",
+  "manifest": "https://raw.githubusercontent.com/Deathkael83/fvtt-wfrp4e-gmtoolkit/dev/module.json",
+  "download": "https://github.com/Deathkael83/fvtt-wfrp4e-gmtoolkit/archive/refs/heads/dev.zip",
+  "bugs": "https://github.com/Deathkael83/fvtt-wfrp4e-gmtoolkit/issues",
+  "changelog": "https://github.com/Deathkael83/fvtt-wfrp4e-gmtoolkit/commits/dev",
+  "readme": "https://github.com/Deathkael83/fvtt-wfrp4e-gmtoolkit"
 }

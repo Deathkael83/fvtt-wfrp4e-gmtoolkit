@@ -1,6 +1,6 @@
 export default class GMToolkit {
 
-  static MODULE_ID = "wfrp4e-gm-toolkit"
+  static MODULE_ID = "wfrp4e-gm-toolkit-dk-fix"
 
   static MODULE_ABBREV = "GMTOOLKIT"
 
