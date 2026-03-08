@@ -7,8 +7,8 @@ async function formDarkWhispers () {
   }
 
   // Setup: determine group of actors to be whispered to
-  const group = game.gmtoolkit.utility.getGroup(game.settings.get("wfrp4e-gm-toolkit", "defaultGroupDarkWhispers")).filter(g => g.type === "character")
-  const targeted = game.gmtoolkit.utility.getGroup(game.settings.get("wfrp4e-gm-toolkit", "defaultGroupDarkWhispers"), { interaction: "targeted" }).filter(g => g.type === "character")
+  const group = game.gmtoolkit.utility.getGroup(game.settings.get("wfrp4e-gm-toolkit-dk-fix", "defaultGroupDarkWhispers")).filter(g => g.type === "character")
+  const targeted = game.gmtoolkit.utility.getGroup(game.settings.get("wfrp4e-gm-toolkit-dk-fix", "defaultGroupDarkWhispers"), { interaction: "targeted" }).filter(g => g.type === "character")
   // Setup: exit with notice if there are no player-assigned characters
   if (!group) {
     return ui.notifications.error(game.i18n.localize("GMTOOLKIT.Message.DarkWhispers.NoEligibleCharacters"))
@@ -123,7 +123,7 @@ function sendDarkWhispers (result, characterList, sendToOwners) {
 
   // Construct and send message to whisper targets
   // Build the translation string based on the setting
-  const messageTemplate = `GMTOOLKIT.Settings.DarkWhispers.message.${game.settings.get("wfrp4e-gm-toolkit", "messageDarkWhispers")}`
+  const messageTemplate = `GMTOOLKIT.Settings.DarkWhispers.message.${game.settings.get("wfrp4e-gm-toolkit-dk-fix", "messageDarkWhispers")}`
   // Parse the translated message
   const whisperMessage = `${game.i18n.format(messageTemplate, { message: darkwhisper })}`
   // Add response buttons for chat card. data- attributes are used by listener.
@@ -159,3 +159,6 @@ function abortWhisper () {
 * TIP: The whisper can be edited in the dialog, regardless of what is pre-filled from the Dark Whispers table.
 * TIP: Actor tokens that are targeted in a scene are pre-selected in the Send Dark Whisper dialog.
 ========== */
+
+
+

@@ -3,7 +3,7 @@
   "type": "script",
   "scope": "global",
   "author": "Yz8naH0UqWS3uLwh",
-  "img": "modules/wfrp4e-gm-toolkit/assets/icons/deal-damage.svg",
+  "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/deal-damage.svg",
   "command": "new game.gmtoolkit.damage.launch().render(true)\n\n/* ==========\n * MACRO: Launch Damage Console\n * VERSION: 6.0.0\n * UPDATED: 2022-09-06\n * DESCRIPTION: Quickly deal damage to multiple actors\n * TIP: Set damage as either a whole number or a valid dice roll formula\n ========== */",
   "ownership": {
     "default": 0,
@@ -11,7 +11,7 @@
   },
   "flags": {
     "core": {},
-    "wfrp4e-gm-toolkit": {
+    "wfrp4e-gm-toolkit-dk-fix": {
       "version": "6.0.0"
     }
   },
@@ -31,3 +31,7 @@
   "_id": "74OvSfTs3slii0RR",
   "_key": "!macros!74OvSfTs3slii0RR"
 }
+
+
+
+

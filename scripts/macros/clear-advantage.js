@@ -7,3 +7,6 @@ game.gmtoolkit.advantage.update(token, "clear")
 * DESCRIPTION: Resets Advantage for the selected token to 0.
 * TIP: Token does not have to be added to an encounter in the Combat Tracker.
 ========== */
+
+
+

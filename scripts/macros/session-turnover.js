@@ -11,7 +11,7 @@ async function endSession () {
   await game.togglePause(pause = true, push = true)
 
   game.gmtoolkit.module.log(false, "Switching to holding scene.")
-  game.scenes.getName(game.settings.get("wfrp4e-gm-toolkit", "holdingScene"))?.activate(true)
+  game.scenes.getName(game.settings.get("wfrp4e-gm-toolkit-dk-fix", "holdingScene"))?.activate(true)
 
   game.gmtoolkit.module.log(false, "Adding Experience.")
   await game.macros.getName("Add XP").execute()
@@ -20,11 +20,11 @@ async function endSession () {
   await game.macros.getName("Reset Fortune").execute()
 
   game.gmtoolkit.module.log(false, "Exporting Chat.")
-  if (game.settings.get("wfrp4e-gm-toolkit", "exportChat")) {
+  if (game.settings.get("wfrp4e-gm-toolkit-dk-fix", "exportChat")) {
     await game.messages.export()
   }
 
-  if (game.settings.get("wfrp4e-gm-toolkit", "sessionID") === "null") {
+  if (game.settings.get("wfrp4e-gm-toolkit-dk-fix", "sessionID") === "null") {
     game.gmtoolkit.module.log(false, "Not updating Session ID.")
   } else {
     game.gmtoolkit.module.log(false, "Updating Session ID.")
@@ -52,7 +52,7 @@ async function endSession () {
             result = new foundry.applications.ux
               .FormDataExtended(button.form).object
             nextSession = result.nextsession
-            game.settings.set("wfrp4e-gm-toolkit", "sessionID", nextSession)
+            game.settings.set("wfrp4e-gm-toolkit-dk-fix", "sessionID", nextSession)
             game.gmtoolkit.module.log(true, `Previous Session ID was ${thisSession}. Next Session ID is ${nextSession}.`)
           }
         },
@@ -75,3 +75,6 @@ async function endSession () {
  * DESCRIPTION: Unified macro to run start and end of session admin, including awarding Experience Points, resetting Fortune, pausing the game and exporting the chat log.
  * TIP: Various default options can be defined in Session Management Settings under Module Settings.
  ========== */
+
+
+

@@ -7,12 +7,12 @@ async function addXP () {
   if (game.user.targets.size < 1) {
     // (1) all assigned player characters
     awardees = game.gmtoolkit.utility
-      .getGroup(game.settings.get("wfrp4e-gm-toolkit", "defaultPartySessionTurnover"))
+      .getGroup(game.settings.get("wfrp4e-gm-toolkit-dk-fix", "defaultPartySessionTurnover"))
       .filter(g => g.type === "character")
   } else {
     // (2) all targeted tokens of awardee selection
     awardees = game.gmtoolkit.utility
-      .getGroup(game.settings.get("wfrp4e-gm-toolkit", "defaultPartySessionTurnover"), { interaction: "targeted" })
+      .getGroup(game.settings.get("wfrp4e-gm-toolkit-dk-fix", "defaultPartySessionTurnover"), { interaction: "targeted" })
       .filter(g => g.type === "character")
   }
 
@@ -20,12 +20,12 @@ async function addXP () {
   if (awardees.length < 1) return ui.notifications.error(game.i18n.localize("GMTOOLKIT.Token.TargetPCs"), {})
 
   // Get  session ID/date, default XP award and default reason
-  const XP = Number(game.settings.get("wfrp4e-gm-toolkit", "addXPDefaultAmount"))
-  let reason = (game.settings.get("wfrp4e-gm-toolkit", "addXPDefaultReason") === "null")
+  const XP = Number(game.settings.get("wfrp4e-gm-toolkit-dk-fix", "addXPDefaultAmount"))
+  let reason = (game.settings.get("wfrp4e-gm-toolkit-dk-fix", "addXPDefaultReason") === "null")
     ? ""
-    : game.settings.get("wfrp4e-gm-toolkit", "addXPDefaultReason")
+    : game.settings.get("wfrp4e-gm-toolkit-dk-fix", "addXPDefaultReason")
   if (reason) {
-    reason = game.settings.get("wfrp4e-gm-toolkit", "addXPDefaultReason")
+    reason = game.settings.get("wfrp4e-gm-toolkit-dk-fix", "addXPDefaultReason")
     const session = game.gmtoolkit.utility.getSession()
     reason = (session.date)
       ? reason.replace("(%date%)", `(${session.date})`)
@@ -36,7 +36,7 @@ async function addXP () {
   }
 
   // Prompt for XP if option is set
-  (game.settings.get("wfrp4e-gm-toolkit", "addXPPrompt"))
+  (game.settings.get("wfrp4e-gm-toolkit-dk-fix", "addXPPrompt"))
     ? promptForXP( awardees, XP, reason )
     : updateXP( awardees, XP, reason )
 
@@ -176,3 +176,6 @@ function groupAwardees (allAwardees) {
  * TIP: Default XP amount and reason can be preset in module settings, along with option to bypass prompt for XP amount each time.
  * TIP: Non-whole numbers are rounded off. Negative numbers are subtracted. Henchman awards are rounded down.
  ========== */
+
+
+

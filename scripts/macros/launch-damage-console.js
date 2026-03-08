@@ -7,3 +7,6 @@ new game.gmtoolkit.damage.launch().render(true)
  * DESCRIPTION: Quickly deal damage to multiple actors
  * TIP: Set damage as either a whole number or a valid dice roll formula
  ========== */
+
+
+

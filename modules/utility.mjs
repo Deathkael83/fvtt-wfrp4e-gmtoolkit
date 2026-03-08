@@ -155,7 +155,7 @@ function getMaxStatus (actor, status) {
 export function getSession () {
   let date = ""
   let time = ""
-  const id = game.settings.get("wfrp4e-gm-toolkit", "sessionID")
+  const id = game.settings.get(GMToolkit.MODULE_ID, "sessionID")
   if (game.world.nextSession != null) {
     date = game.world.nextSession?.split("T")[0]
     time = game.world.nextSession?.split("T")[1]
@@ -519,4 +519,6 @@ export async function compileItems (itemType = ["skill"], rollable = undefined) 
   items = items.sort((a, b) => a.name > b.name ? 1 : -1)
   return items
 }
+
+
 

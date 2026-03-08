@@ -254,8 +254,8 @@ export default class Advantage {
    * @param {boolean} startOfRound  :   Unset sorAdvantage flag at end of round
    **/
   static unsetFlags (advantaged, startOfRound = false) {
-    advantaged.filter(c => c.unsetFlag("wfrp4e-gm-toolkit", "advantage"))
-    if (startOfRound) advantaged.filter(c => c.unsetFlag("wfrp4e-gm-toolkit", "sorAdvantage"))
+    advantaged.filter(c => c.unsetFlag(GMToolkit.MODULE_ID, "advantage"))
+    if (startOfRound) advantaged.filter(c => c.unsetFlag(GMToolkit.MODULE_ID, "sorAdvantage"))
     GMToolkit.log(false, "Advantage Flags: Unset.")
   }
 
@@ -268,7 +268,7 @@ export default class Advantage {
     const combatantAdvantage = []
 
     combat.combatants.forEach(combatant => {
-      combatantAdvantage.startOfRound = combatant.getFlag("wfrp4e-gm-toolkit", "sorAdvantage")
+      combatantAdvantage.startOfRound = combatant.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")
       // eslint-disable-next-line max-len
       combatantAdvantage.endOfRound = combatant.token.actor.system.status?.advantage?.value
       const checkToLoseMomentum
@@ -311,7 +311,7 @@ export default class Advantage {
       notgained: checkNotGained,
       none: noAdvantage
     }
-    const dialogContent = await renderTemplate("modules/wfrp4e-gm-toolkit/templates/gm-toolkit-advantage-momentum.html", templateData)
+    const dialogContent = await renderTemplate("modules/wfrp4e-gm-toolkit-dk-fix/templates/gm-toolkit-advantage-momentum.html", templateData)
     let lostAdvantage = ""
 
     foundry.applications.api.DialogV2.wait({
@@ -384,10 +384,27 @@ function getTokenObjectForCombatant (combatant) {
 }
 
 function getOpposedMessageId (opposedTest, attackerTest, defenderTest) {
-  return opposedTest?.attackerTest?.message?.id
+  const attackerMessageId =
+    opposedTest?.attackerTest?.message?.id
     ?? attackerTest?.message?.id
+    ?? "no-attacker-message"
+
+  const defenderMessageId =
+    opposedTest?.defenderTest?.message?.id
     ?? defenderTest?.message?.id
-    ?? null
+    ?? "no-defender-message"
+
+  const attackerActorId =
+    opposedTest?.attacker?.id
+    ?? attackerTest?.actor?.id
+    ?? "no-attacker-actor"
+
+  const defenderActorId =
+    opposedTest?.defender?.id
+    ?? defenderTest?.actor?.id
+    ?? "no-defender-actor"
+
+  return `${attackerMessageId}__${defenderMessageId}__${attackerActorId}__${defenderActorId}`
 }
 
 async function reconcileOpposedTestAdvantage ({
@@ -710,15 +727,17 @@ Hooks.on("updateCombat", async function (combat, change) {
   // Clear Advantage flags when the combat round changes
   // Still required when Group Advantage is used because of Opposed Test flags
   GMToolkit.log(true, "updateCombat: unsetting Advantage flags")
-  const advFlagged = combat.combatants.filter(c => c.getFlag("wfrp4e-gm-toolkit", "advantage"))
+  const advFlagged = combat.combatants.filter(c => c.getFlag(GMToolkit.MODULE_ID, "advantage"))
   if (advFlagged.length) await Advantage.unsetFlags(advFlagged)
 
   GMToolkit.log(false, "updateCombat: Setting startOfRound flag")
   // Skip individual start of round Advantage tracking if Group Advantage is being used
   if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
     combat.combatants.forEach(async c => {
-      await c.setFlag("wfrp4e-gm-toolkit", "sorAdvantage", c.token.actor.system.status?.advantage?.value ?? 0)
-      GMToolkit.log(false, `${c.name}:  ${c.getFlag("wfrp4e-gm-toolkit", "sorAdvantage")}`)
+      await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
+      GMToolkit.log(false, `${c.name}:  ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
     })
   }
 })
+
+

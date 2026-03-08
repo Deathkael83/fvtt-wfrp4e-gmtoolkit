@@ -44,3 +44,6 @@ function getMaxFortune (target) {
  * DESCRIPTION: Restores Fortune to the Fate level of player character(s). Applies any Luck talent bonus.
  * TIP: Characters must be player assigned (if group setting is 'party') or player owned (if group setting is 'company').
  ========== */
+
+
+

@@ -21,7 +21,7 @@ export class DamageConsole
 
   static PARTS = {
     form: {
-      template: "modules/wfrp4e-gm-toolkit/templates/damage.hbs"
+      template: "modules/wfrp4e-gm-toolkit-dk-fix/templates/damage.hbs"
     },
     footer: {
       template: "templates/generic/form-footer.hbs"
@@ -36,7 +36,7 @@ export class DamageConsole
       /* Uncomment this to leverage or add user defined default group,
         * such as that used for Group Tests
       options: {
-        type: this.object.groupOptions?.type || game.settings.get("wfrp4e-gm-toolkit", "defaultPartyGroupTest")
+        type: this.object.groupOptions?.type || game.settings.get(GMToolkit.MODULE_ID, "defaultPartyGroupTest")
       } */
     }
 
@@ -252,3 +252,5 @@ async function evaluateDamageFormula (damageFormula) {
   if (!damage) console.log(`Cannot evaluate damage formula! ${damageFormula}`)
   return damage.total
 }
+
+

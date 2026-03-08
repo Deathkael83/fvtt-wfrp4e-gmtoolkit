@@ -5,7 +5,7 @@ async function pullEveryoneToScene () {
     ui.notifications.error(game.i18n.localize("GMTOOLKIT.Message.ScenePullActivate.NoPermission"))
   }
 
-  switch (game.settings.get("wfrp4e-gm-toolkit", "scenePullActivate")) {
+  switch (game.settings.get("wfrp4e-gm-toolkit-dk-fix", "scenePullActivate")) {
     case "prompt":
       const promptPullActivate = await foundry.applications.api.DialogV2.wait({
         window: { title: game.i18n.localize("GMTOOLKIT.Dialog.ScenePullActivate.Title") },
@@ -69,3 +69,6 @@ async function pullEveryoneToScene () {
 * DESCRIPTION: Yanks every player into the scene that the GM is on.
 * TIP: Optionally activate (or prompt to activate) the scene through Configure Session Options in module settings.
 ========== */
+
+
+

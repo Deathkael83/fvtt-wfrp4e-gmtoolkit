@@ -303,7 +303,7 @@ export class GMToolkitSettings {
       type: Boolean,
       feature: "tokenhud"
     })
-    if (game.settings.get("wfrp4e-gm-toolkit", "enableTokenHudExtensions")) game.settings.set("wfrp4e-gm-toolkit", "enableTokenHudExtensions", false)
+    if (game.settings.get(GMToolkit.MODULE_ID, "enableTokenHudExtensions")) game.settings.set(GMToolkit.MODULE_ID, "enableTokenHudExtensions", false)
 
     // Settings for Token Hud Extension
     game.settings.register(GMToolkit.MODULE_ID, "tokenHudStatusEffectsBackground", {
@@ -510,3 +510,5 @@ export async function registerGroupTestSettings () {
     default: []
   })
 }
+
+

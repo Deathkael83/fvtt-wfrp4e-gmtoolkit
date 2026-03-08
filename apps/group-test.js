@@ -23,7 +23,7 @@ export class GroupTest
 
   static PARTS = {
     form: {
-      template: "modules/wfrp4e-gm-toolkit/templates/group-test.hbs"
+      template: "modules/wfrp4e-gm-toolkit-dk-fix/templates/group-test.hbs"
     },
     footer: {
       template: "templates/generic/form-footer.hbs"
@@ -41,29 +41,29 @@ export class GroupTest
 
     context.skills = {
       list: game.gmtoolkit.skills,
-      target: game.settings.get("wfrp4e-gm-toolkit", "defaultSkillGroupTest"),
-      quickTest1: game.settings.get("wfrp4e-gm-toolkit", "quicktest1GroupTest"),
-      quickTest2: game.settings.get("wfrp4e-gm-toolkit", "quicktest2GroupTest"),
-      quickTest3: game.settings.get("wfrp4e-gm-toolkit", "quicktest3GroupTest"),
-      quickTest4: game.settings.get("wfrp4e-gm-toolkit", "quicktest4GroupTest")
+      target: game.settings.get(GMToolkit.MODULE_ID, "defaultSkillGroupTest"),
+      quickTest1: game.settings.get(GMToolkit.MODULE_ID, "quicktest1GroupTest"),
+      quickTest2: game.settings.get(GMToolkit.MODULE_ID, "quicktest2GroupTest"),
+      quickTest3: game.settings.get(GMToolkit.MODULE_ID, "quicktest3GroupTest"),
+      quickTest4: game.settings.get(GMToolkit.MODULE_ID, "quicktest4GroupTest")
     }
 
     context.skills.target
-      = (game.settings.get("wfrp4e-gm-toolkit", "defaultSkillGroupTest") === "null")
+      = (game.settings.get(GMToolkit.MODULE_ID, "defaultSkillGroupTest") === "null")
         ? ""
-        : game.settings.get("wfrp4e-gm-toolkit", "defaultSkillGroupTest")
+        : game.settings.get(GMToolkit.MODULE_ID, "defaultSkillGroupTest")
     context.skills.custom = context.skills.list.map(m => m.name).includes(context.skills.target) ? "" : context.skills.target
 
     context.testParameters = {
-      testModifier: game.settings.get("wfrp4e-gm-toolkit", "defaultTestModifierGroupTest"),
-      rollMode: game.settings.get("wfrp4e-gm-toolkit", "defaultRollModeGroupTest"),
-      testDifficulty: game.settings.get("wfrp4e-gm-toolkit", "defaultDifficultyGroupTest")
+      testModifier: game.settings.get(GMToolkit.MODULE_ID, "defaultTestModifierGroupTest"),
+      rollMode: game.settings.get(GMToolkit.MODULE_ID, "defaultRollModeGroupTest"),
+      testDifficulty: game.settings.get(GMToolkit.MODULE_ID, "defaultDifficultyGroupTest")
       // _slBonus: this.object.testParameters?.slBonus || 0,
       // _successBonus: this.object.testParameters?.successBonus || 0,
     }
 
-    context.testParameters.bypass = this.object?.testParameters?.bypass === undefined ? game.settings.get("wfrp4e-gm-toolkit", "bypassTestDialogGroupTest") : this.object?.testParameters?.bypass
-    context.testParameters.fallback = this.object?.testParameters?.fallback === undefined ? game.settings.get("wfrp4e-gm-toolkit", "fallbackAdvancedSkills") : this.object?.testParameters?.fallback
+    context.testParameters.bypass = this.object?.testParameters?.bypass === undefined ? game.settings.get(GMToolkit.MODULE_ID, "bypassTestDialogGroupTest") : this.object?.testParameters?.bypass
+    context.testParameters.fallback = this.object?.testParameters?.fallback === undefined ? game.settings.get(GMToolkit.MODULE_ID, "fallbackAdvancedSkills") : this.object?.testParameters?.fallback
 
     context.rollModeOptions = CONFIG.Dice.rollModes
     context.difficultyOptions = game.wfrp4e.config.difficultyLabels
@@ -71,7 +71,7 @@ export class GroupTest
     // Set group defaults if not provided
     context.group = {
       options: {
-        type: this.object?.groupOptions?.type || game.settings.get("wfrp4e-gm-toolkit", "defaultPartyGroupTest") // ,
+        type: this.object?.groupOptions?.type || game.settings.get(GMToolkit.MODULE_ID, "defaultPartyGroupTest") // ,
         // _present: this.object.groupOptions?.present || true,
         // _interaction: this.object.groupOptions?.interaction || undefined
       }
@@ -214,9 +214,9 @@ function toggleGroupedSkill (control) {
   }
   if (control.value === "") {
     field.value
-    = (game.settings.get("wfrp4e-gm-toolkit", "defaultSkillGroupTest") === "null")
+    = (game.settings.get(GMToolkit.MODULE_ID, "defaultSkillGroupTest") === "null")
         ? ""
-        : game.settings.get("wfrp4e-gm-toolkit", "defaultSkillGroupTest")
+        : game.settings.get(GMToolkit.MODULE_ID, "defaultSkillGroupTest")
   }
 }
 
@@ -229,3 +229,5 @@ function toggleBypassTestDialog (control) {
   document.getElementById("testModifier").disabled = !control.checked
   document.getElementById("difficulty").disabled = !control.checked
 }
+
+

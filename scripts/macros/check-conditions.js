@@ -132,3 +132,6 @@ async function checkConditions () {
 * TIP: Set `skipPCs = false` to automatically make condition checks for player-assigned characters.
 * TIP: Set `endOfCombatRoundsOnly = false` to use the macro in any combat round, or even outside combat.
 ========== */
+
+
+

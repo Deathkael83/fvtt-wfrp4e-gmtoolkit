@@ -54,3 +54,5 @@ Hooks.on("renderChatMessageHTML", (chatMessage, html) => {
     DarkWhispers.chatListeners(button)
   })
 })
+
+

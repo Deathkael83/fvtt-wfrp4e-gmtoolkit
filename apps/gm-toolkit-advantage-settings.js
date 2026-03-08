@@ -22,7 +22,7 @@ export default class GMToolkitAdvantageSettings
 
   static PARTS = {
     form: {
-      template: "modules/wfrp4e-gm-toolkit/templates/gm-toolkit-settings.html"
+      template: "modules/wfrp4e-gm-toolkit-dk-fix/templates/gm-toolkit-settings.html"
     },
     footer: {
       template: "templates/generic/form-footer.hbs"
@@ -51,3 +51,5 @@ export default class GMToolkitAdvantageSettings
       .set(GMToolkit.MODULE_ID, setting, inputFields[setting])
   }
 }
+
+

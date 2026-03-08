@@ -98,7 +98,7 @@ export default class SocketHandlers {
     )
 
     const response = await game.settings.set(
-      "wfrp4e-gm-toolkit",
+      GMToolkit.MODULE_ID,
       "aggregateResultGroupTest",
       data.payload
     )
@@ -108,3 +108,5 @@ export default class SocketHandlers {
   }
 
 }
+
+

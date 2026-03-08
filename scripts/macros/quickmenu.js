@@ -43,7 +43,7 @@ class QuickMenu extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static PARTS = {
     form: {
-      template: "/modules/wfrp4e-gm-toolkit/templates/quickmenu.hbs"
+      template: "/modules/wfrp4e-gm-toolkit-dk-fix/templates/quickmenu.hbs"
     }
   }
 
@@ -96,7 +96,7 @@ class QuickMenu extends HandlebarsApplicationMixin(ApplicationV2) {
           quickMenu.push({
             name: name,
             label: label,
-            // icon: "modules/wfrp4e-gm-toolkit/assets/icons/quick-settings.svg",
+            // icon: "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/quick-settings.svg",
             action: "setting"
           })
         }
@@ -126,3 +126,6 @@ new QuickMenu().render({ force: true })
 * TIP: Add / remove macros from the 'macros' or settings list to tailor it for your game. Names must exactly match those in the Macro Directory.
 * TIP: Mix and match macros and settings in the same list.
 ========== */
+
+
+

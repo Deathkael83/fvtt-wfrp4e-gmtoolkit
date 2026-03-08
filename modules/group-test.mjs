@@ -7,12 +7,12 @@ export async function launchGroupTest (groupOptions, testParameters) {
 
 
 export async function runSilentGroupTest (groupOptions, testParameters) {
-  const testSkill = testParameters?.testSkill || game.settings.get("wfrp4e-gm-toolkit", "defaultSkillGroupTest")
+  const testSkill = testParameters?.testSkill || game.settings.get(GMToolkit.MODULE_ID, "defaultSkillGroupTest")
 
   const testOptions = {
-    bypass: testParameters?.bypass === undefined ? game.settings.get("wfrp4e-gm-toolkit", "bypassTestDialogGroupTest") : testParameters?.bypass,
-    rollMode: testParameters?.rollMode || game.settings.get("wfrp4e-gm-toolkit", "defaultRollModeGroupTest"),
-    fallback: testParameters?.fallback === undefined ? game.settings.get("wfrp4e-gm-toolkit", "fallbackAdvancedSkills") : testParameters?.fallback
+    bypass: testParameters?.bypass === undefined ? game.settings.get(GMToolkit.MODULE_ID, "bypassTestDialogGroupTest") : testParameters?.bypass,
+    rollMode: testParameters?.rollMode || game.settings.get(GMToolkit.MODULE_ID, "defaultRollModeGroupTest"),
+    fallback: testParameters?.fallback === undefined ? game.settings.get(GMToolkit.MODULE_ID, "fallbackAdvancedSkills") : testParameters?.fallback
   }
 
   groupOptions.members = await getGroupMembers(groupOptions?.type)
@@ -30,7 +30,7 @@ export async function runSilentGroupTest (groupOptions, testParameters) {
   runGroupTest(testSkill, testOptions)
 }
 
-export async function getGroupMembers (groupType = game.settings.get("wfrp4e-gm-toolkit", "defaultPartyGroupTest")) {
+export async function getGroupMembers (groupType = game.settings.get(GMToolkit.MODULE_ID, "defaultPartyGroupTest")) {
   const members = {
     playerGroup: game.gmtoolkit.utility.getGroup(groupType).map(g => g.uuid),
     selected: game.gmtoolkit.utility.getGroup("company", { interaction: "selected", present: true }).map(g => g.uuid),
@@ -42,7 +42,7 @@ export async function getGroupMembers (groupType = game.settings.get("wfrp4e-gm-
 
 
 export async function runGroupTest (testSkill, testOptions) {
-  await game.settings.set("wfrp4e-gm-toolkit", "aggregateResultGroupTest", [])
+  await game.settings.set(GMToolkit.MODULE_ID, "aggregateResultGroupTest", [])
   let actorTestResult = ""
   const activePlayers = getGroup("assigned", { active: true })
   const targetGroup = (testOptions.targetGroup.filter(member => member !== null))
@@ -84,7 +84,7 @@ export async function runGroupTest (testSkill, testOptions) {
     }
   }
 
-  if (game.settings.get("wfrp4e-gm-toolkit", "aggregateResultGroupTest").length > 0) {
+  if (game.settings.get(GMToolkit.MODULE_ID, "aggregateResultGroupTest").length > 0) {
     sendAggregateGroupTestResults(testSkill, testOptions)
   }
 
@@ -92,8 +92,8 @@ export async function runGroupTest (testSkill, testOptions) {
 
 
 async function sendAggregateGroupTestResults (testSkill, testOptions) {
-  const summaryThreshold = await game.settings.get("wfrp4e-gm-toolkit", "summariseResultsThresholdGroupTest")
-  const groupTestResults = await game.settings.get("wfrp4e-gm-toolkit", "aggregateResultGroupTest")
+  const summaryThreshold = await game.settings.get(GMToolkit.MODULE_ID, "summariseResultsThresholdGroupTest")
+  const groupTestResults = await game.settings.get(GMToolkit.MODULE_ID, "aggregateResultGroupTest")
 
   // Don't show a summary if a positive threshold isn't set or there are no test results
   if (summaryThreshold <= 0 || groupTestResults.length === 0) return
@@ -104,7 +104,7 @@ async function sendAggregateGroupTestResults (testSkill, testOptions) {
     + `${game.i18n.localize("Modifier")}: ${testOptions.testModifier}\n`
     + `${game.i18n.localize("GMTOOLKIT.Settings.GroupTest.bypassTestDialog.name")}: ${testOptions.bypass}\n`
     + `${game.i18n.localize("GMTOOLKIT.Settings.MakeSecretGroupTests.FallbackAdvanced.name")}: ${testOptions.fallback}\n`
-    + `${game.i18n.localize("DIALOG.DifficultyStep")}: ${game.settings.get("wfrp4e-gm-toolkit", "fallbackAdjustDifficulty")}\n`
+    + `${game.i18n.localize("DIALOG.DifficultyStep")}: ${game.settings.get(GMToolkit.MODULE_ID, "fallbackAdjustDifficulty")}\n`
 
   let groupTestResultsMessage = `<h3><abbr title="${testParameters}">${game.i18n.localize("GMTOOLKIT.Dialog.MakeSecretGroupTest.RollTitleSummary")}</abbr><strong>${testSkill}</strong></h3>`
   let actorTestResultMessage = ""
@@ -129,7 +129,7 @@ async function sendAggregateGroupTestResults (testSkill, testOptions) {
   })
 
   // clean up aggregate results pseudo-setting
-  await game.settings.set("wfrp4e-gm-toolkit", "aggregateResultGroupTest", [])
+  await game.settings.set(GMToolkit.MODULE_ID, "aggregateResultGroupTest", [])
 }
 
 
@@ -163,7 +163,7 @@ export async function runActorTest (actor, testSkill, testOptions) {
       // Optionally step-adjust the difficulty in case of fallback on advanced skills
       const stepAdjustDifficulty
         = (actorSkill.advanced.value === "adv")
-          ? game.settings.get("wfrp4e-gm-toolkit", "fallbackAdjustDifficulty")
+          ? game.settings.get(GMToolkit.MODULE_ID, "fallbackAdjustDifficulty")
           : 0
           // TODO: Refactor to use wfrp4e.utility.alterDifficulty
       const difficultySetting
@@ -195,7 +195,7 @@ export async function runActorTest (actor, testSkill, testOptions) {
  */
 export async function updateGroupTestResults (actorTestResult) {
   await game.settings.set(
-    "wfrp4e-gm-toolkit",
+    GMToolkit.MODULE_ID,
     "aggregateResultGroupTest",
     actorTestResult
   )
@@ -211,7 +211,7 @@ export async function updateGroupTestResults (actorTestResult) {
 Hooks.on("wfrp4e:rollTest", async function (testData, chatData) {
   if (testData.options.groupTest) {
     const groupTestResult = []
-    await groupTestResult.push(...game.settings.get("wfrp4e-gm-toolkit", "aggregateResultGroupTest"))
+    await groupTestResult.push(...game.settings.get(GMToolkit.MODULE_ID, "aggregateResultGroupTest"))
 
     const testResult = {
       actor: testData.token || testData.actor,
@@ -241,4 +241,6 @@ Hooks.on("wfrp4e:rollTest", async function (testData, chatData) {
 
   }
 })
+
+
 

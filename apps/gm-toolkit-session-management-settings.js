@@ -29,7 +29,7 @@ export default class GMToolkitSessionManagementSettings
 
   static PARTS = {
     form: {
-      template: "modules/wfrp4e-gm-toolkit/templates/gm-toolkit-settings.html",
+      template: "modules/wfrp4e-gm-toolkit-dk-fix/templates/gm-toolkit-settings.html",
       classes: ["gmtoolkit", "scrollable"]
     },
     footer: {
@@ -72,3 +72,5 @@ export default class GMToolkitSessionManagementSettings
     if (event.type === "submit") this.close(false)
   }
 }
+
+

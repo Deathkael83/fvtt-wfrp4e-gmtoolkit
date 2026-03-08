@@ -1,7 +1,7 @@
 {
   "_id": "9rXQv4uJcQoLBitt",
   "name": "Dark Whispers",
-  "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+  "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
   "description": "<p>Generic Dark Whispers that are used as placeholder prompts by the Send Dark Whispers macro.</p>",
   "results": [
     {
@@ -13,7 +13,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -37,7 +37,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -61,7 +61,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -85,7 +85,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -109,7 +109,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -133,7 +133,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -157,7 +157,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -181,7 +181,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -205,7 +205,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -229,7 +229,7 @@
       ],
       "drawn": false,
       "flags": {},
-      "img": "modules/wfrp4e-gm-toolkit/assets/icons/dark-whispers.svg",
+      "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/dark-whispers.svg",
       "weight": 1,
       "_stats": {
         "compendiumSource": null,
@@ -258,7 +258,7 @@
       "key": "darkwhispers",
       "column": ""
     },
-    "wfrp4e-gm-toolkit": {
+    "wfrp4e-gm-toolkit-dk-fix": {
       "version": "0.9.5"
     }
   },
@@ -276,3 +276,7 @@
   "sort": 0,
   "_key": "!tables!9rXQv4uJcQoLBitt"
 }
+
+
+
+

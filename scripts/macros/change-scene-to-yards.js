@@ -16,3 +16,6 @@ await canvas.scene.updateEmbeddedDocuments("AmbientLight", newLights)
 * UPDATED: 2023-03-08
 * DESCRIPTION: Change scene grid to 2 yards, keeping lighting at scale. Useful for maps created for DnD that have a grid of 5ft, or any other grid size.
 ========== */
+
+
+

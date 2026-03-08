@@ -26,7 +26,7 @@ export default class GMToolkitMaintenance
 
   static PARTS = {
     form: {
-      template: "/modules/wfrp4e-gm-toolkit/templates/gm-toolkit-maintenance.html",
+      template: "/modules/wfrp4e-gm-toolkit-dk-fix/templates/gm-toolkit-maintenance.html",
       classes: ["gmtoolkit", "scrollable"]
     },
     footer: {
@@ -110,7 +110,7 @@ async function buildLocalizedContent (documentType) {
     content.translationKey = strip(content.name, translationKeyPrefix, ".")
     content.compendiumVersion = documents
       .filter(d => d.name === game.i18n.localize(content.translationKey))
-      .map(i => i.flags["wfrp4e-gm-toolkit"]?.version)[0]
+      .map(i => i.flags[GMToolkit.MODULE_ID]?.version)[0]
     contentArray.push(content)
   }
 
@@ -120,3 +120,5 @@ async function buildLocalizedContent (documentType) {
   return contentArray
 
 }  // End function buildLocalizedContent()
+
+

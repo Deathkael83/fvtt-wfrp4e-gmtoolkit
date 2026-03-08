@@ -3,13 +3,13 @@
   "name": "Simply d100",
   "type": "chat",
   "author": "k5y1jEYMBqd9uLUx",
-  "img": "modules/wfrp4e-gm-toolkit/assets/icons/d100.svg",
+  "img": "modules/wfrp4e-gm-toolkit-dk-fix/assets/icons/d100.svg",
   "scope": "global",
   "command": "/r 1d100",
   "folder": null,
   "sort": 1000000,
   "flags": {
-    "wfrp4e-gm-toolkit": {
+    "wfrp4e-gm-toolkit-dk-fix": {
       "version": "0.9.3"
     }
   },
@@ -29,3 +29,7 @@
   },
   "_key": "!macros!ihMGjHFP3SdvYH2k"
 }
+
+
+
+
