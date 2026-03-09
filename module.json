@@ -37,32 +37,32 @@
   "styles": [
     "/css/gmtoolkit.css"
   ],
-  "packs": [
-    {
-      "name": "gm-toolkit-macros",
-      "label": "GM Toolkit",
-      "path": "packs/gm-toolkit-macros",
-      "type": "Macro",
-      "system": "wfrp4e",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      },
-      "flags": {}
+"packs": [
+  {
+    "name": "gm-toolkit-macros",
+    "label": "GM Toolkit",
+    "path": "packs/gm-toolkit-macros",
+    "type": "Macro",
+    "system": "wfrp4e",
+    "ownership": {
+      "PLAYER": "OBSERVER",
+      "ASSISTANT": "OWNER"
     },
-    {
-      "name": "gm-toolkit-tables",
-      "label": "GM Toolkit",
-      "path": "packs/gm-toolkit-tables",
-      "type": "RollTable",
-      "system": "wfrp4e",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      },
-      "flags": {}
-    }
-  ],
+    "flags": {}
+  },
+  {
+    "name": "gm-toolkit-tables",
+    "label": "GM Toolkit",
+    "path": "packs/gm-toolkit-tables",
+    "type": "RollTable",
+    "system": "wfrp4e",
+    "ownership": {
+      "PLAYER": "OBSERVER",
+      "ASSISTANT": "OWNER"
+    },
+    "flags": {}
+  }
+],
   "languages": [
     {
       "lang": "en",
