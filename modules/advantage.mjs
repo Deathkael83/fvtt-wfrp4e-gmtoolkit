@@ -396,6 +396,34 @@ function getOpposedMessageId (opposedTest, attackerTest, defenderTest) {
   return `${attackerMessageId}__${defenderMessageId}__${attackerActorId}__${defenderActorId}`
 }
 
+function resolveOpposedLedgerKey ({
+  ledger,
+  rawMessageId,
+  attackerActorId,
+  defenderActorId
+}) {
+  const combat = game.combats.active
+  const round = combat?.round ?? null
+  const turn = combat?.turn ?? null
+
+  if (ledger[rawMessageId]) return rawMessageId
+
+  const candidates = Object.entries(ledger)
+    .filter(([, entry]) =>
+      entry?.attackerActorId === attackerActorId
+      && entry?.defenderActorId === defenderActorId
+      && entry?.round === round
+      && entry?.turn === turn
+    )
+    .sort((a, b) => (b[1]?.updatedAt ?? 0) - (a[1]?.updatedAt ?? 0))
+
+  if (candidates.length > 0) {
+    return candidates[0][0]
+  }
+
+  return rawMessageId
+}
+
 async function reconcileOpposedTestAdvantage ({
   messageId,
   attackerActorId,
@@ -420,19 +448,41 @@ async function reconcileOpposedTestAdvantage ({
   if (!attackerToken || !defenderToken) return
 
   const ledger = await getOpposedLedger()
-  const entry = ledger[messageId] ?? {
+  const ledgerKey = resolveOpposedLedgerKey({
+    ledger,
+    rawMessageId: messageId,
+    attackerActorId,
+    defenderActorId
+  })
+
+  const entry = ledger[ledgerKey] ?? {
     attackerActorId,
     defenderActorId,
+    round: combat.round ?? null,
+    turn: combat.turn ?? null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    rawMessageIds: [],
     lastWinnerSide: null,
     applied: null
   }
 
   entry.attackerActorId = attackerActorId
   entry.defenderActorId = defenderActorId
+  entry.round = combat.round ?? null
+  entry.turn = combat.turn ?? null
+  entry.updatedAt = Date.now()
+
+  if (!Array.isArray(entry.rawMessageIds)) entry.rawMessageIds = []
+  if (!entry.rawMessageIds.includes(messageId)) {
+    entry.rawMessageIds.push(messageId)
+  }
 
   // If same winner already synced, do nothing
   if (entry.applied && entry.lastWinnerSide === winnerSide) {
-    GMToolkit.log(true, `Opposed ledger already synced for message ${messageId}.`)
+    ledger[ledgerKey] = entry
+    await setOpposedLedger(ledger)
+    GMToolkit.log(true, `Opposed ledger already synced for key ${ledgerKey}.`)
     return
   }
 
@@ -516,7 +566,7 @@ async function reconcileOpposedTestAdvantage ({
     winnerDelta,
     loserDelta
   }
-  ledger[messageId] = entry
+  ledger[ledgerKey] = entry
   await setOpposedLedger(ledger)
 
   if (announce) {
