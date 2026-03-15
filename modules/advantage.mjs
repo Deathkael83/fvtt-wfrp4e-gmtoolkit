@@ -260,51 +260,40 @@ export default class Advantage {
   }
 
   static async loseMomentum (combat) {
-    let checkNotGained = "" // List of tokens that have not accrued advantage
-    let checkGained = "" // List of tokens that have accrued advantage
-    let noAdvantage = "" // List of tokens that have no advantage at the end of the round
-    let combatantLine = "" // Html string for constructing dialog
-    let round = combat.round
-    const combatantAdvantage = []
+    GMToolkit.log(false, "Lose Momentum at End of Round: Started.")
+    const round = combat.round
+    let checkGained = ""
+    let checkNotGained = ""
+    let noAdvantage = ""
+    let combatantLine = ""
 
     combat.combatants.forEach(combatant => {
-      combatantAdvantage.startOfRound = combatant.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")
-      // eslint-disable-next-line max-len
-      combatantAdvantage.endOfRound = combatant.token.actor.system.status?.advantage?.value
-      const checkToLoseMomentum
-        = (combatantAdvantage.endOfRound - combatantAdvantage.startOfRound > 0)
-          ? false
-          : "checked"
+      const endOfRound = Number(combatant.token?.actor?.system?.status?.advantage?.value ?? 0)
+      const sorFlag = combatant.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")
+      const startOfRound = Number.isFinite(Number(sorFlag)) ? Number(sorFlag) : 0
+
+      const gainedThisRound = endOfRound > startOfRound
+      const checkToLoseMomentum = gainedThisRound ? false : "checked"
 
       // TODO: Define and replace the inline styles within the stylesheet
-      if (!combatantAdvantage.endOfRound) {
+      if (endOfRound <= 0) {
         noAdvantage += `<img src="${combatant.img}" style = "height: 2rem; border: none; padding-right: 2px; padding-left: 2px; max-width: fit-content;" alt="${combatant.name}" title="${combatant.name}">&nbsp;${combatant.name}</img>`
       } else {
         combatantLine = `
                 <div class="form-group">
                 <input type="checkbox" id="${combatant.tokenId}" name="${combatant.tokenId}" value="${combatant.name}" ${checkToLoseMomentum}> 
                 <img src="${combatant.img}" style = "height: 2rem; vertical-align : middle; border: none; padding-right: 6px; padding-left: 2px; max-width: fit-content;" />
-                <label for="${combatant.tokenId}" style = "text-align: left;  border: none;">  <strong>${combatant.name}</strong></label>
-                <label for="${combatant.tokenId}"  style = "text-align: left;  border: none;"> ${combatantAdvantage.startOfRound} &rarr; ${combatantAdvantage.endOfRound} </label>
+                <label for="${combatant.tokenId}" style = "text-align: left; border: none;"> <strong>${combatant.name}</strong></label>
+                <label for="${combatant.tokenId}" style = "text-align: left; border: none;"> ${startOfRound} &rarr; ${endOfRound} </label>
                 </div>
-                `;
-        (checkToLoseMomentum)
-          ? checkNotGained += combatantLine
-          : checkGained += combatantLine
+                `
+        if (gainedThisRound) {
+          checkGained += combatantLine
+        } else {
+          checkNotGained += combatantLine
+        }
       }
     })
-
-    // Exit without prompt if no combatant has Advantage to lose
-    if (checkGained === "" && checkNotGained === "") {
-      const uiNotice = game.i18n.format("GMTOOLKIT.Message.Advantage.NoCombatantsWithAdvantage", { combatRound: round })
-      if (game.user.isGM) {ui.notifications.notify(uiNotice, "info", { permanent: game.settings.get(GMToolkit.MODULE_ID, "persistAdvantageNotifications") }, { console: true } )}
-      return
-    }
-
-    // Explain empty dialog sections
-    if (checkGained === "") checkGained = `<div class="form-group">${game.i18n.localize("GMTOOLKIT.Message.Advantage.NoCombatantsAccruedAdvantage")}</div>`
-    if (checkNotGained === "") checkNotGained = `<div class="form-group">${game.i18n.localize("GMTOOLKIT.Message.Advantage.NoCombatantsNotAccruedAdvantage")}</div>`
-    if (noAdvantage === "") noAdvantage = game.i18n.localize("GMTOOLKIT.Message.Advantage.NoCombatantsWithoutAdvantage")
 
     const templateData = {
       gained: checkGained,
@@ -325,6 +314,7 @@ export default class Advantage {
           callback: async (event, button, dialog) => {
             const response = new foundry.applications.ux
               .FormDataExtended(button.form).object
+
             // Reduce advantage for selected combatants
             for ( const combatant of combat.combatants ) {
               if (response[combatant.tokenId] === combatant.name) {
@@ -334,6 +324,7 @@ export default class Advantage {
                 lostAdvantage += `${token.name}: ${result.starting} &rarr; ${result.new} <br/>`
               }
             }
+
             // Confirm changes made in whisper to GM
             if (lostAdvantage !== "") {
               const chatData = game.wfrp4e.utility.chatDataSetup(lostAdvantage, "gmroll", false)
@@ -347,13 +338,11 @@ export default class Advantage {
           action: "cancel"
         }
       ]
-    }
-    )
+    })
 
     GMToolkit.log(false, "Lose Momentum at End of Round: Finished.")
-
   }
-
+  
 } // End Class
 
 
@@ -471,6 +460,17 @@ async function reconcileOpposedTestAdvantage ({
   const loserToken = getTokenObjectForCombatant(loserCombatant)
   if (!winnerToken || !loserToken) return
 
+  GMToolkit.log(true, "Reconciling opposed test advantage", {
+    messageId,
+    attackerActorId,
+    defenderActorId,
+    winnerSide,
+    groupAdvantage: game.settings.get("wfrp4e", "useGroupAdvantage"),
+    previousApplied: entry.applied,
+    winnerCombatant: winnerCombatant?.actor?.name,
+    loserCombatant: loserCombatant?.actor?.name
+  })
+
   let winnerDelta = 1
   if (
     game.settings.get("wfrp4e", "useGroupAdvantage") === true
@@ -484,9 +484,25 @@ async function reconcileOpposedTestAdvantage ({
     ? Number(loserToken.actor.status.advantage.value ?? 0)
     : 0
 
-  // Apply new final state
-  if (loserCurrent > 0) {
-    await Advantage.update(loserToken, -loserCurrent, "opposedLedger")
+  const loserDelta = !game.settings.get("wfrp4e", "useGroupAdvantage")
+    ? -loserCurrent
+    : 0
+
+  const loserTarget = !game.settings.get("wfrp4e", "useGroupAdvantage")
+    ? 0
+    : 0
+
+  GMToolkit.log(true, "Applying reconciled advantage deltas", {
+    winner: winnerCombatant?.actor?.name,
+    loser: loserCombatant?.actor?.name,
+    winnerDelta,
+    loserTarget,
+    winnerCurrentAdvantage: winnerCombatant?.actor?.system?.status?.advantage?.value,
+    loserCurrentAdvantage: loserCombatant?.actor?.system?.status?.advantage?.value
+  })
+
+  if (!game.settings.get("wfrp4e", "useGroupAdvantage") && loserDelta !== 0) {
+    await Advantage.update(loserToken, loserDelta, "opposedLedger")
   }
 
   if (winnerDelta !== 0) {
@@ -495,29 +511,20 @@ async function reconcileOpposedTestAdvantage ({
 
   entry.lastWinnerSide = winnerSide
   entry.applied = {
-    winnerActorId: winnerCombatant.actor.id,
-    loserActorId: loserCombatant.actor.id,
+    winnerActorId: winnerCombatant.actor?.id,
+    loserActorId: loserCombatant.actor?.id,
     winnerDelta,
-    loserDelta: loserCurrent
+    loserDelta
   }
-
   ledger[messageId] = entry
   await setOpposedLedger(ledger)
 
-  if (announce && game.user.isGM) {
-    const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.OpposedTest", {
-      winner: winnerCombatant.actor.name,
-      loser: loserCombatant.actor.name
-    })}`
-    ui.notifications.notify(uiNotice, "success", {
-      permanent: game.settings.get(GMToolkit.MODULE_ID, "persistAdvantageNotifications"),
-      console: true
-    })
+  if (announce) {
+    const winnerName = winnerCombatant.actor?.name ?? winnerCombatant.name
+    const loserName = loserCombatant.actor?.name ?? loserCombatant.name
+    GMToolkit.log(true, `Opposed ledger synced: ${winnerName} over ${loserName}.`)
   }
-
-  GMToolkit.log(true, "Advantage: Opposed Test reconciled.", { messageId, winnerSide, entry })
 }
-
 
 Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
   GMToolkit.log(false, scriptArgs)
