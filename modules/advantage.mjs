@@ -4,16 +4,6 @@ import { inActiveCombat } from "./utility.mjs"
 export default class Advantage {
 
   /**
-   * Entry point for adjustments to Advantage through .
-   * @param {Object} character   :   Token
-   * @param {string} adjustment  :   increase (+1), clear (=0), reduce (-1)
-   * // TODO: add support for numeric adjustment values
-   * @param {string} context     :   macro, wfrp4e:opposedTestResult, wfrp4e:applyDamage, createCombatant, preDeleteCombatant, createActiveEffect, loseMomentum
-   * @returns {Array} update     :   outcome (String: increased, reduced, min, max, reset, no change),
-   *                                 starting (Number: what the character's Advantage was at the start of the routine)
-   *                                 new (Number: what the character's Advantage is at the end of the routine)
-   **/
-  /**
    * Entry point for adjustments to Advantage.
    * @param {Object} character   : Token
    * @param {string|number} adjustment : increase (+1), clear (=0), reduce (-1), oppure delta numerico (+N / -N)
@@ -243,7 +233,7 @@ export default class Advantage {
     // Bypass individual player Advantage updates if Group Advantage is being used
     if (game.user.isGM && !(game.settings.get("wfrp4e", "useGroupAdvantage"))) ui.notifications.notify(message, type, options)
     // Force refresh the token hud if it is visible
-    if (character.hasActiveHUD) {await canvas.hud.token.render(true)}
+    if (character.hasActiveHUD) { await canvas.hud.token.render(true) }
     update.context = (update.context) ? update.context : context
     return update
   }
@@ -316,7 +306,7 @@ export default class Advantage {
               .FormDataExtended(button.form).object
 
             // Reduce advantage for selected combatants
-            for ( const combatant of combat.combatants ) {
+            for (const combatant of combat.combatants) {
               if (response[combatant.tokenId] === combatant.name) {
                 const token = canvas.tokens.placeables
                   .filter(a => a.id === combatant.tokenId)[0]
@@ -342,10 +332,7 @@ export default class Advantage {
 
     GMToolkit.log(false, "Lose Momentum at End of Round: Finished.")
   }
-  
-} // End Class
-
-
+}
 
 async function getOpposedLedger () {
   const combat = game.combats.active
@@ -359,17 +346,133 @@ async function setOpposedLedger (ledger) {
   return combat.setFlag(GMToolkit.MODULE_ID, "opposedLedger", ledger)
 }
 
-function getActiveCombatantByActor (actorOrId) {
-  const actorId = typeof actorOrId === "string" ? actorOrId : actorOrId?.id
-  if (!actorId || !game.combats.active) return null
-  return Array.from(game.combats.active.combatants).find(c => c.actor?.id === actorId) ?? null
+function getCombatantTokenUuid (combatant) {
+  if (!combatant) return null
+  return combatant.token?.uuid ?? combatant.token?.document?.uuid ?? combatant.token?.object?.document?.uuid ?? null
+}
+
+function getCombatantSceneId (combatant) {
+  return combatant?.token?.parent?.id ?? combatant?.parent?.scene?.id ?? game.scenes.current?.id ?? null
+}
+
+function getTokenDocumentFromRef (ref = {}) {
+  const sceneId = ref.sceneId ?? game.scenes.current?.id ?? null
+  const tokenId = ref.tokenId ?? null
+  if (!tokenId) return null
+
+  const scene = sceneId ? game.scenes.get(sceneId) : game.scenes.current
+  return scene?.tokens?.get(tokenId)
+    ?? canvas.tokens.placeables.find(t => t.id === tokenId)?.document
+    ?? null
+}
+
+function getTokenObjectFromRef (ref = {}) {
+  const tokenDoc = getTokenDocumentFromRef(ref)
+  return tokenDoc?.object
+    ?? canvas.tokens.placeables.find(t => t.id === ref.tokenId)
+    ?? null
+}
+
+function getTokenRefFromCombatant (combatant) {
+  if (!combatant) return null
+
+  const tokenId = combatant.tokenId ?? combatant.token?.id ?? combatant.token?.document?.id ?? null
+  if (!tokenId) return null
+
+  return {
+    actorId: combatant.actor?.id ?? null,
+    combatantId: combatant.id ?? null,
+    tokenId,
+    sceneId: getCombatantSceneId(combatant),
+    tokenUuid: getCombatantTokenUuid(combatant)
+  }
+}
+
+function getCombatantByTokenRef (tokenRef) {
+  const combat = game.combats.active
+  if (!combat || !tokenRef) return null
+
+  if (tokenRef.combatantId) {
+    const byCombatantId = combat.combatants.get(tokenRef.combatantId)
+    if (byCombatantId) return byCombatantId
+  }
+
+  if (tokenRef.tokenId) {
+    const byTokenId = Array.from(combat.combatants).find(c => c.tokenId === tokenRef.tokenId)
+    if (byTokenId) return byTokenId
+  }
+
+  if (tokenRef.tokenUuid) {
+    const byTokenUuid = Array.from(combat.combatants).find(c => getCombatantTokenUuid(c) === tokenRef.tokenUuid)
+    if (byTokenUuid) return byTokenUuid
+  }
+
+  if (tokenRef.actorId) {
+    const actorMatches = Array.from(combat.combatants).filter(c => c.actor?.id === tokenRef.actorId)
+    if (actorMatches.length === 1) return actorMatches[0]
+  }
+
+  return null
 }
 
 function getTokenObjectForCombatant (combatant) {
   if (!combatant) return null
-  return combatant.token?.object
+
+  const tokenRef = getTokenRefFromCombatant(combatant)
+  return getTokenObjectFromRef(tokenRef)
+    ?? combatant.token?.object
     ?? canvas.tokens.placeables.find(t => t.id === combatant.tokenId)
     ?? null
+}
+
+function getTokenRefFromTest (test, fallbackActor = null) {
+  if (!test && !fallbackActor) return null
+
+  const actor = test?.actor ?? fallbackActor ?? null
+  const speaker = test?.message?.speaker ?? null
+  const sceneId = speaker?.scene ?? game.combats.active?.scene?.id ?? game.scenes.current?.id ?? null
+  const speakerTokenId = speaker?.token ?? null
+
+  const directRef = speakerTokenId
+    ? {
+        actorId: actor?.id ?? null,
+        combatantId: test?.combatant?.id ?? null,
+        tokenId: speakerTokenId,
+        sceneId,
+        tokenUuid: null
+      }
+    : null
+
+  if (directRef?.tokenId) {
+    const combatant = getCombatantByTokenRef(directRef)
+    if (combatant) {
+      return {
+        ...directRef,
+        combatantId: directRef.combatantId ?? combatant.id ?? null,
+        tokenUuid: getCombatantTokenUuid(combatant) ?? null
+      }
+    }
+
+    const tokenDoc = getTokenDocumentFromRef(directRef)
+    if (tokenDoc) {
+      return {
+        ...directRef,
+        tokenUuid: tokenDoc.uuid ?? null
+      }
+    }
+  }
+
+  if (test?.combatant) {
+    const combatantRef = getTokenRefFromCombatant(test.combatant)
+    if (combatantRef) return combatantRef
+  }
+
+  if (actor) {
+    const actorMatches = Array.from(game.combats.active?.combatants ?? []).filter(c => c.actor?.id === actor.id)
+    if (actorMatches.length === 1) return getTokenRefFromCombatant(actorMatches[0])
+  }
+
+  return directRef
 }
 
 function getOpposedMessageId (opposedTest, attackerTest, defenderTest) {
@@ -383,24 +486,35 @@ function getOpposedMessageId (opposedTest, attackerTest, defenderTest) {
     ?? defenderTest?.message?.id
     ?? "no-defender-message"
 
-  const attackerActorId =
-    opposedTest?.attacker?.id
+  const attackerRef = getTokenRefFromTest(attackerTest, opposedTest?.attacker)
+  const defenderRef = getTokenRefFromTest(defenderTest, opposedTest?.defender)
+
+  const attackerKey =
+    attackerRef?.combatantId
+    ?? attackerRef?.tokenUuid
+    ?? attackerRef?.tokenId
+    ?? attackerRef?.actorId
+    ?? opposedTest?.attacker?.id
     ?? attackerTest?.actor?.id
-    ?? "no-attacker-actor"
+    ?? "no-attacker-ref"
 
-  const defenderActorId =
-    opposedTest?.defender?.id
+  const defenderKey =
+    defenderRef?.combatantId
+    ?? defenderRef?.tokenUuid
+    ?? defenderRef?.tokenId
+    ?? defenderRef?.actorId
+    ?? opposedTest?.defender?.id
     ?? defenderTest?.actor?.id
-    ?? "no-defender-actor"
+    ?? "no-defender-ref"
 
-  return `${attackerMessageId}__${defenderMessageId}__${attackerActorId}__${defenderActorId}`
+  return `${attackerMessageId}__${defenderMessageId}__${attackerKey}__${defenderKey}`
 }
 
 function resolveOpposedLedgerKey ({
   ledger,
   rawMessageId,
-  attackerActorId,
-  defenderActorId
+  attackerRef,
+  defenderRef
 }) {
   const combat = game.combats.active
   const round = combat?.round ?? null
@@ -408,13 +522,41 @@ function resolveOpposedLedgerKey ({
 
   if (ledger[rawMessageId]) return rawMessageId
 
+  const attackerMatchKey =
+    attackerRef?.combatantId
+    ?? attackerRef?.tokenUuid
+    ?? attackerRef?.tokenId
+    ?? attackerRef?.actorId
+    ?? null
+
+  const defenderMatchKey =
+    defenderRef?.combatantId
+    ?? defenderRef?.tokenUuid
+    ?? defenderRef?.tokenId
+    ?? defenderRef?.actorId
+    ?? null
+
   const candidates = Object.entries(ledger)
-    .filter(([, entry]) =>
-      entry?.attackerActorId === attackerActorId
-      && entry?.defenderActorId === defenderActorId
-      && entry?.round === round
-      && entry?.turn === turn
-    )
+    .filter(([, entry]) => {
+      const entryAttackerKey =
+        entry?.attackerRef?.combatantId
+        ?? entry?.attackerRef?.tokenUuid
+        ?? entry?.attackerRef?.tokenId
+        ?? entry?.attackerActorId
+        ?? null
+
+      const entryDefenderKey =
+        entry?.defenderRef?.combatantId
+        ?? entry?.defenderRef?.tokenUuid
+        ?? entry?.defenderRef?.tokenId
+        ?? entry?.defenderActorId
+        ?? null
+
+      return entryAttackerKey === attackerMatchKey
+        && entryDefenderKey === defenderMatchKey
+        && entry?.round === round
+        && entry?.turn === turn
+    })
     .sort((a, b) => (b[1]?.updatedAt ?? 0) - (a[1]?.updatedAt ?? 0))
 
   if (candidates.length > 0) {
@@ -426,38 +568,47 @@ function resolveOpposedLedgerKey ({
 
 async function reconcileOpposedTestAdvantage ({
   messageId,
-  attackerActorId,
-  defenderActorId,
+  attackerRef,
+  defenderRef,
   winnerSide,
   announce = true
 }) {
   if (!game.user.isUniqueGM) return
   if (!messageId) return
+  if (!attackerRef || !defenderRef) return
   if (!["attacker", "defender"].includes(winnerSide)) return
   if (!game.settings.get(GMToolkit.MODULE_ID, "automateOpposedTestAdvantage")) return
 
   const combat = game.combats.active
   if (!combat) return
 
-  const attackerCombatant = getActiveCombatantByActor(attackerActorId)
-  const defenderCombatant = getActiveCombatantByActor(defenderActorId)
-  if (!attackerCombatant || !defenderCombatant) return
+  const attackerCombatant = getCombatantByTokenRef(attackerRef)
+  const defenderCombatant = getCombatantByTokenRef(defenderRef)
+  if (!attackerCombatant || !defenderCombatant) {
+    GMToolkit.log(true, "Unable to resolve opposed test combatants.", { messageId, attackerRef, defenderRef })
+    return
+  }
 
   const attackerToken = getTokenObjectForCombatant(attackerCombatant)
   const defenderToken = getTokenObjectForCombatant(defenderCombatant)
-  if (!attackerToken || !defenderToken) return
+  if (!attackerToken || !defenderToken) {
+    GMToolkit.log(true, "Unable to resolve opposed test token objects.", { messageId, attackerRef, defenderRef })
+    return
+  }
 
   const ledger = await getOpposedLedger()
   const ledgerKey = resolveOpposedLedgerKey({
     ledger,
     rawMessageId: messageId,
-    attackerActorId,
-    defenderActorId
+    attackerRef,
+    defenderRef
   })
 
   const entry = ledger[ledgerKey] ?? {
-    attackerActorId,
-    defenderActorId,
+    attackerActorId: attackerCombatant.actor?.id ?? attackerRef.actorId ?? null,
+    defenderActorId: defenderCombatant.actor?.id ?? defenderRef.actorId ?? null,
+    attackerRef: foundry.utils.deepClone(attackerRef),
+    defenderRef: foundry.utils.deepClone(defenderRef),
     round: combat.round ?? null,
     turn: combat.turn ?? null,
     createdAt: Date.now(),
@@ -467,8 +618,10 @@ async function reconcileOpposedTestAdvantage ({
     applied: null
   }
 
-  entry.attackerActorId = attackerActorId
-  entry.defenderActorId = defenderActorId
+  entry.attackerActorId = attackerCombatant.actor?.id ?? attackerRef.actorId ?? null
+  entry.defenderActorId = defenderCombatant.actor?.id ?? defenderRef.actorId ?? null
+  entry.attackerRef = foundry.utils.deepClone(attackerRef)
+  entry.defenderRef = foundry.utils.deepClone(defenderRef)
   entry.round = combat.round ?? null
   entry.turn = combat.turn ?? null
   entry.updatedAt = Date.now()
@@ -478,7 +631,6 @@ async function reconcileOpposedTestAdvantage ({
     entry.rawMessageIds.push(messageId)
   }
 
-  // If same winner already synced, do nothing
   if (entry.applied && entry.lastWinnerSide === winnerSide) {
     ledger[ledgerKey] = entry
     await setOpposedLedger(ledger)
@@ -486,10 +638,9 @@ async function reconcileOpposedTestAdvantage ({
     return
   }
 
-  // Roll back previous effect of THIS opposed test only
   if (entry.applied) {
-    const previousWinnerCombatant = getActiveCombatantByActor(entry.applied.winnerActorId)
-    const previousLoserCombatant = getActiveCombatantByActor(entry.applied.loserActorId)
+    const previousWinnerCombatant = getCombatantByTokenRef(entry.applied.winnerRef)
+    const previousLoserCombatant = getCombatantByTokenRef(entry.applied.loserRef)
 
     const previousWinnerToken = getTokenObjectForCombatant(previousWinnerCombatant)
     const previousLoserToken = getTokenObjectForCombatant(previousLoserCombatant)
@@ -512,8 +663,8 @@ async function reconcileOpposedTestAdvantage ({
 
   GMToolkit.log(true, "Reconciling opposed test advantage", {
     messageId,
-    attackerActorId,
-    defenderActorId,
+    attackerRef,
+    defenderRef,
     winnerSide,
     groupAdvantage: game.settings.get("wfrp4e", "useGroupAdvantage"),
     previousApplied: entry.applied,
@@ -524,7 +675,7 @@ async function reconcileOpposedTestAdvantage ({
   let winnerDelta = 1
   if (
     game.settings.get("wfrp4e", "useGroupAdvantage") === true
-    && winnerCombatant.actor?.id !== attackerActorId
+    && winnerCombatant.id !== attackerCombatant.id
   ) {
     winnerDelta = 0
     GMToolkit.log(true, "No advantage gained for winning an opposed test you did not initiate.")
@@ -538,15 +689,10 @@ async function reconcileOpposedTestAdvantage ({
     ? -loserCurrent
     : 0
 
-  const loserTarget = !game.settings.get("wfrp4e", "useGroupAdvantage")
-    ? 0
-    : 0
-
   GMToolkit.log(true, "Applying reconciled advantage deltas", {
     winner: winnerCombatant?.actor?.name,
     loser: loserCombatant?.actor?.name,
     winnerDelta,
-    loserTarget,
     winnerCurrentAdvantage: winnerCombatant?.actor?.system?.status?.advantage?.value,
     loserCurrentAdvantage: loserCombatant?.actor?.system?.status?.advantage?.value
   })
@@ -561,8 +707,10 @@ async function reconcileOpposedTestAdvantage ({
 
   entry.lastWinnerSide = winnerSide
   entry.applied = {
-    winnerActorId: winnerCombatant.actor?.id,
-    loserActorId: loserCombatant.actor?.id,
+    winnerRef: foundry.utils.deepClone(getTokenRefFromCombatant(winnerCombatant)),
+    loserRef: foundry.utils.deepClone(getTokenRefFromCombatant(loserCombatant)),
+    winnerActorId: winnerCombatant.actor?.id ?? null,
+    loserActorId: loserCombatant.actor?.id ?? null,
     winnerDelta,
     loserDelta
   }
@@ -582,35 +730,43 @@ Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
   if (scriptArgs.opposedTest.attackerTest.preData.dualWielding) return // Exit if this is the first strike when Dual Wielding
   if (!game.settings.get(GMToolkit.MODULE_ID, "automateDamageAdvantage")) return
   if (!inActiveCombat(scriptArgs.opposedTest.attackerTest.actor)
-    | !inActiveCombat(scriptArgs.opposedTest.defenderTest.actor)) return // Exit if either actor is not in the active combat
+    || !inActiveCombat(scriptArgs.opposedTest.defenderTest.actor)) return // Exit if either actor is not in the active combat
 
-  const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Outmanoeuvre", { actorName: scriptArgs.actor.name, attackerName: scriptArgs.attacker.name, totalWoundLoss: scriptArgs.totalWoundLoss } )}`
+  const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Outmanoeuvre", { actorName: scriptArgs.actor.name, attackerName: scriptArgs.attacker.name, totalWoundLoss: scriptArgs.totalWoundLoss })}`
   const message = uiNotice
   const type = "success"
   const options = { permanent: game.settings.get(GMToolkit.MODULE_ID, "persistAdvantageNotifications"), console: true }
 
-  if (game.user.isGM) {ui.notifications.notify(message, type, options)}
+  if (game.user.isGM) { ui.notifications.notify(message, type, options) }
 
-  // Clear advantage on actor that has taken damage when not using Group  Advantage
+  const defenderRef = getTokenRefFromTest(scriptArgs.opposedTest?.defenderTest, scriptArgs.actor)
+  const attackerRef = getTokenRefFromTest(scriptArgs.opposedTest?.attackerTest, scriptArgs.attacker)
+
+  const defenderCombatant = getCombatantByTokenRef(defenderRef)
+  const attackerCombatant = getCombatantByTokenRef(attackerRef)
+
+  const defenderToken = getTokenObjectForCombatant(defenderCombatant)
+  const attackerToken = getTokenObjectForCombatant(attackerCombatant)
+
+  if (!defenderToken || !attackerToken) {
+    GMToolkit.log(true, "Unable to resolve tokens during wfrp4e:applyDamage", { defenderRef, attackerRef })
+    return
+  }
+
+  // Clear advantage on actor that has taken damage when not using Group Advantage
   if (!game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    const character = Array.from(game.combats.active.combatants)
-      .filter(c => c.actor === scriptArgs.actor)[0]
-      .token.object
-    await Advantage.update(character, "clear", "wfrp4e:applyDamage" )
+    await Advantage.update(defenderToken, "clear", "wfrp4e:applyDamage")
   }
 
   // Increase advantage on actor that dealt damage, as long as it has not already been updated for this test
-  const character = Array.from(game.combats.active.combatants)
-    .filter(c => c.actor === scriptArgs.attacker)[0]
-    .token.object
-  if (character.combatant.getFlag(GMToolkit.MODULE_ID, "advantage")?.outmanoeuvre !== scriptArgs.opposedTest.attackerTest.message.id) {
-    await Advantage.update(character, "increase", "wfrp4e:applyDamage")
+  if (attackerCombatant.getFlag(GMToolkit.MODULE_ID, "advantage")?.outmanoeuvre !== scriptArgs.opposedTest.attackerTest.message.id) {
+    await Advantage.update(attackerToken, "increase", "wfrp4e:applyDamage")
 
-    if (!character.actor.isOwner) {
+    if (!attackerToken.actor.isOwner) {
       await game.socket.emit(`module.${GMToolkit.MODULE_ID}`, {
         type: "setFlag",
         payload: {
-          character: character.combatant,
+          character: attackerCombatant,
           updateData: {
             flag: "advantage",
             key: "outmanoeuvre",
@@ -619,16 +775,14 @@ Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
         }
       })
     } else {
-      await character.combatant.setFlag(GMToolkit.MODULE_ID, "advantage", { outmanoeuvre: scriptArgs.opposedTest.attackerTest.message.id })
+      await attackerCombatant.setFlag(GMToolkit.MODULE_ID, "advantage", { outmanoeuvre: scriptArgs.opposedTest.attackerTest.message.id })
     }
-
   } else {
-    GMToolkit.log(true, `Advantage increase already applied to ${character.name} for outmanoeuvring.`)
+    GMToolkit.log(true, `Advantage increase already applied to ${attackerToken.name} for outmanoeuvring.`)
   }
 
   GMToolkit.log(false, "Outmanoeuvring Advantage: Finished.")
 })
-
 
 Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, defenderTest) {
   GMToolkit.log(true, "wfrp4e:opposedTestResult", opposedTest, attackerTest, defenderTest)
@@ -642,16 +796,19 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
     return
   }
 
-  // CHARGING: keep existing behavior
+  const attackerRef = getTokenRefFromTest(attackerTest, opposedTest?.attacker)
+  const defenderRef = getTokenRefFromTest(defenderTest, opposedTest?.defender)
+  const attackerCombatant = getCombatantByTokenRef(attackerRef)
+  const defenderCombatant = getCombatantByTokenRef(defenderRef)
+
+  // CHARGING: keep existing behavior, but token-safe
   if (!game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    // Flag attacker charging
-    if (attackerTest.data.preData?.charging || attackerTest.data.result.other === game.i18n.localize("Charging")) {
+    if (attackerCombatant && (attackerTest.data.preData?.charging || attackerTest.data.result.other === game.i18n.localize("Charging"))) {
       if (!attackerTest.actor.isOwner) {
         await game.socket.emit(`module.${GMToolkit.MODULE_ID}`, {
           type: "setFlag",
           payload: {
-            character: Array.from(game.combats.active.combatants)
-              .filter(c => c.actor === opposedTest.attacker)[0],
+            character: attackerCombatant,
             updateData: {
               flag: "advantage",
               key: "charging",
@@ -660,20 +817,16 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
           }
         })
       } else {
-        await Array.from(game.combats.active.combatants)
-          .filter(c => c.actor === opposedTest.attacker)[0]
-          .setFlag(GMToolkit.MODULE_ID, "advantage", { charging: opposedTest.attackerTest.message.id })
+        await attackerCombatant.setFlag(GMToolkit.MODULE_ID, "advantage", { charging: opposedTest.attackerTest.message.id })
       }
     }
 
-    // Flag defender charging
-    if (defenderTest.data.preData?.charging || defenderTest.data.result.other === game.i18n.localize("Charging")) {
+    if (defenderCombatant && (defenderTest.data.preData?.charging || defenderTest.data.result.other === game.i18n.localize("Charging"))) {
       if (!defenderTest.actor.isOwner) {
         await game.socket.emit(`module.${GMToolkit.MODULE_ID}`, {
           type: "setFlag",
           payload: {
-            character: Array.from(game.combats.active.combatants)
-              .filter(c => c.actor === opposedTest.defender)[0],
+            character: defenderCombatant,
             updateData: {
               flag: "advantage",
               key: "charging",
@@ -682,9 +835,7 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
           }
         })
       } else {
-        await Array.from(game.combats.active.combatants)
-          .filter(c => c.actor === opposedTest.defender)[0]
-          .setFlag(GMToolkit.MODULE_ID, "advantage", { charging: opposedTest.attackerTest.message.id })
+        await defenderCombatant.setFlag(GMToolkit.MODULE_ID, "advantage", { charging: opposedTest.attackerTest.message.id })
       }
     }
   }
@@ -697,19 +848,22 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
   const attacker = attackerTest.actor
   const defender = defenderTest.actor
   if (!inActiveCombat(attacker) || !inActiveCombat(defender)) return
+  if (!attackerRef || !defenderRef) {
+    GMToolkit.log(true, "Unable to build token refs for opposed test.", { attackerRef, defenderRef })
+    return
+  }
 
   const messageId = getOpposedMessageId(opposedTest, attackerTest, defenderTest)
   const winnerSide = opposedTest?.result?.winner
 
   await reconcileOpposedTestAdvantage({
     messageId,
-    attackerActorId: attacker.id,
-    defenderActorId: defender.id,
+    attackerRef,
+    defenderRef,
     winnerSide,
     announce: true
   })
 })
-
 
 // Intercept when an actor gets a condition during combat
 Hooks.on("createActiveEffect", async function (conditionEffect) {
@@ -719,7 +873,7 @@ Hooks.on("createActiveEffect", async function (conditionEffect) {
   if (game.settings.get("wfrp4e", "useGroupAdvantage")) return // ... Group Advantage is in play
   if (!game.user.isUniqueGM) return // ... not a GM
   if (!conditionEffect.parent.inCombat) return // ... not in combat
-  if (!conditionEffect.isCondition) return  // ... not a system recognised condition
+  if (!conditionEffect.isCondition) return // ... not a system recognised condition
   const nonConditions = ["dead", "fear", "grappling", "engaged"]
   const condId = conditionEffect.conditionId
   if (nonConditions.includes(condId)) return // ... not a core rules combat condition
@@ -731,16 +885,15 @@ Hooks.on("createActiveEffect", async function (conditionEffect) {
   await Advantage.update(token, "clear", "createActiveEffect")
 
   // Notification declarations
-  const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Condition", { character: conditionEffect.parent.name, condition: conditionEffect.displayLabel } )}`
+  const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Condition", { character: conditionEffect.parent.name, condition: conditionEffect.displayLabel })}`
   const message = uiNotice
   const type = "info"
   const options = {
     permanent: game.settings.get(GMToolkit.MODULE_ID, "persistAdvantageNotifications"),
     console: true
   }
-  if (game.user.isGM) {ui.notifications.notify(message, type, options)}
+  if (game.user.isGM) { ui.notifications.notify(message, type, options) }
 })
-
 
 Hooks.on("createCombatant", function (combatant) {
   // ADDING TO COMBAT: clear token Advantage only if enabled, and Group Advantage is not being used.
@@ -761,10 +914,9 @@ Hooks.on("deleteCombatant", function (combatant) {
   }
 })
 
-
 Hooks.on("preUpdateCombat", async function (combat, change) {
   if (!game.user.isUniqueGM || !combat.combatants.size || !change.round) return
-  if ( !(change.round > combat.round) ) return // Exit if not advancing combat round, including going backwards through combat
+  if (!(change.round > combat.round)) return // Exit if not advancing combat round, including going backwards through combat
   if (!combat.started) return // Exit when beginning combat; prevents loseMomentum firing prematurely
 
   // Lose Momentum: proceed only if enabled, and Group Advantage is not being used
@@ -773,9 +925,7 @@ Hooks.on("preUpdateCombat", async function (combat, change) {
     GMToolkit.log(false, "preUpdateCombat: compare Advantage at start and end of round")
     Advantage.loseMomentum(combat)
   }
-
 })
-
 
 Hooks.on("updateCombat", async function (combat, change) {
   if (!combat.round || !game.user.isUniqueGM || !combat.combatants.size) return
@@ -796,5 +946,3 @@ Hooks.on("updateCombat", async function (combat, change) {
     })
   }
 })
-
-
