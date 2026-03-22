@@ -965,7 +965,7 @@ Hooks.once("ready", () => {
     })
 
     const consumed = await consumeDualWieldOpeningAdvantage({
-      attackerRef
+      sourceMessage: message
     })
 
     GMToolkit.log(true, "Dual Wield follow-up consume result:", consumed)
