@@ -677,6 +677,50 @@ async function clearDualWieldOpeningAdvantage (key) {
   await setDualWieldLedger(ledger)
 }
 
+async function clearOpposedLedgerForDualWieldFollowUp (attackerRef) {
+  if (!attackerRef) return
+
+  const combat = game.combats.active
+  if (!combat) return
+
+  const ledger = await getOpposedLedger()
+  let changed = false
+
+  const attackerMatchKey =
+    attackerRef?.combatantId
+    ?? attackerRef?.tokenUuid
+    ?? attackerRef?.tokenId
+    ?? attackerRef?.actorId
+    ?? null
+
+  for (const [key, entry] of Object.entries(ledger)) {
+    const entryAttackerKey =
+      entry?.attackerRef?.combatantId
+      ?? entry?.attackerRef?.tokenUuid
+      ?? entry?.attackerRef?.tokenId
+      ?? entry?.attackerActorId
+      ?? null
+
+    const sameAttacker = entryAttackerKey === attackerMatchKey
+    const sameRound = entry?.round === (combat.round ?? null)
+    const sameTurn = entry?.turn === (combat.turn ?? null)
+
+    if (!sameAttacker || !sameRound || !sameTurn) continue
+
+    // Invalida l'applicazione precedente, così il follow-up può essere valutato di nuovo
+    entry.applied = null
+    entry.lastWinnerSide = null
+    entry.updatedAt = Date.now()
+    ledger[key] = entry
+    changed = true
+  }
+
+  if (changed) {
+    await setOpposedLedger(ledger)
+    GMToolkit.log(true, "Opposed ledger cleared for Dual Wield follow-up.", { attackerRef })
+  }
+}
+
 async function consumeDualWieldOpeningAdvantage ({
   sourceMessage = null,
   attackerRef = null
@@ -699,6 +743,8 @@ async function consumeDualWieldOpeningAdvantage ({
   if (currentAdvantage > 0) {
     await Advantage.update(token, -1, "dualWieldConsume")
   }
+
+  await clearOpposedLedgerForDualWieldFollowUp(entry.attackerRef)
 
   const ledger = await getDualWieldLedger()
   if (ledger[key]) {
