@@ -725,12 +725,14 @@ async function reconcileOpposedTestAdvantage ({
 }
 
 Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
+  if (!game.user.isUniqueGM) return
+
   GMToolkit.log(false, scriptArgs)
   if (!scriptArgs.opposedTest.defenderTest.context.unopposed) return // Only apply when Outmanouevring (ie, damage from an unopposed test).
   if (scriptArgs.opposedTest.attackerTest.preData.dualWielding) return // Exit if this is the first strike when Dual Wielding
   if (!game.settings.get(GMToolkit.MODULE_ID, "automateDamageAdvantage")) return
   if (!inActiveCombat(scriptArgs.opposedTest.attackerTest.actor)
-    || !inActiveCombat(scriptArgs.opposedTest.defenderTest.actor)) return // Exit if either actor is not in the active combat
+    || !inActiveCombat(scriptArgs.opposedTest.defenderTest.actor)) return // Exit if either actor is not in the active combat 
 
   const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Outmanoeuvre", { actorName: scriptArgs.actor.name, attackerName: scriptArgs.attacker.name, totalWoundLoss: scriptArgs.totalWoundLoss })}`
   const message = uiNotice
@@ -785,6 +787,8 @@ Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
 })
 
 Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, defenderTest) {
+  if (!game.user.isUniqueGM) return
+
   GMToolkit.log(true, "wfrp4e:opposedTestResult", opposedTest, attackerTest, defenderTest)
 
   // For Group Advantage, handle tests which should not generate advantage
