@@ -736,18 +736,19 @@ function normalizeActionText (value) {
 function isDualWieldFollowUpControl (element) {
   if (!element) return false
 
-  const text = normalizeActionText(
-    element.textContent
-    ?? element.innerText
-    ?? element.getAttribute?.("title")
-    ?? element.getAttribute?.("aria-label")
-    ?? ""
-  )
+  const datasetAction = String(element.dataset?.action ?? "").toLowerCase()
 
-  const datasetAction = normalizeActionText(element.dataset?.action ?? "")
-  const datasetTooltip = normalizeActionText(element.dataset?.tooltip ?? "")
+  // PRIORITÀ ASSOLUTA: check strutturato (robusto)
+  if (datasetAction === "rolldualwielder") return true
 
-  const haystack = `${text} ${datasetAction} ${datasetTooltip}`
+  // fallback testuale (nel caso cambino HTML)
+  const text = String(
+    element.textContent ??
+    element.innerText ??
+    element.getAttribute?.("title") ??
+    element.getAttribute?.("aria-label") ??
+    ""
+  ).toLowerCase().replace(/\s+/g, " ").trim()
 
   return [
     "dual wielder attack",
@@ -755,7 +756,7 @@ function isDualWieldFollowUpControl (element) {
     "offhand",
     "arma secondaria",
     "improvvisata"
-  ].some(p => haystack.includes(p))
+  ].some(p => text.includes(p))
 }
 
 async function reconcileOpposedTestAdvantage ({
