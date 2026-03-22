@@ -7,7 +7,7 @@ export default class Advantage {
    * Entry point for adjustments to Advantage.
    * @param {Object} character   : Token
    * @param {string|number} adjustment : increase (+1), clear (=0), reduce (-1), oppure delta numerico (+N / -N)
-   * @param {string} context     : macro, wfrp4e:opposedTestResult, wfrp4e:applyDamage, createCombatant, preDeleteCombatant, createActiveEffect, loseMomentum, opposedLedger
+   * @param {string} context     : macro, wfrp4e:opposedTestResult, wfrp4e:applyDamage, createCombatant, preDeleteCombatant, createActiveEffect, loseMomentum, opposedLedger, dualWieldPending
    * @returns {Array} update     : outcome (String), starting (Number), new (Number)
    **/
   static async update (character, adjustment, context = "macro") {
@@ -198,7 +198,11 @@ export default class Advantage {
         update.context = game.i18n.format("GMTOOLKIT.Advantage.Context.AddedToCombat", { actorName: character.name })
         break
       case "preDeleteCombatant":
+      case "deleteCombatant":
         update.context = game.i18n.format("GMTOOLKIT.Advantage.Context.RemovedFromCombat", { actorName: character.name })
+        break
+      case "dualWieldPending":
+        update.context = game.i18n.format("GMTOOLKIT.Advantage.Context.WonOpposedTest", { actorName: character.name })
         break
       default:
         break
@@ -230,22 +234,22 @@ export default class Advantage {
     }
 
     const message = (update.context ? update.context : "") + update.notice
-    // Bypass individual player Advantage updates if Group Advantage is being used
     if (game.user.isGM && !(game.settings.get("wfrp4e", "useGroupAdvantage"))) ui.notifications.notify(message, type, options)
-    // Force refresh the token hud if it is visible
-    if (character.hasActiveHUD) { await canvas.hud.token.render(true) }
+    if (character.hasActiveHUD) await canvas.hud.token.render(true)
     update.context = (update.context) ? update.context : context
     return update
   }
 
   /**
    * Clears combatant flags set for increasing token Advantage during combat.
-   * @param {Array} advantaged   :   Array of Combatant
-   * @param {boolean} startOfRound  :   Unset sorAdvantage flag at end of round
+   * @param {Array} advantaged   : Array of Combatant
+   * @param {boolean} startOfRound : Unset sorAdvantage flag at end of round
    **/
-  static unsetFlags (advantaged, startOfRound = false) {
-    advantaged.filter(c => c.unsetFlag(GMToolkit.MODULE_ID, "advantage"))
-    if (startOfRound) advantaged.filter(c => c.unsetFlag(GMToolkit.MODULE_ID, "sorAdvantage"))
+  static async unsetFlags (advantaged, startOfRound = false) {
+    for (const combatant of advantaged) {
+      await combatant.unsetFlag(GMToolkit.MODULE_ID, "advantage")
+      if (startOfRound) await combatant.unsetFlag(GMToolkit.MODULE_ID, "sorAdvantage")
+    }
     GMToolkit.log(false, "Advantage Flags: Unset.")
   }
 
@@ -265,16 +269,15 @@ export default class Advantage {
       const gainedThisRound = endOfRound > startOfRound
       const checkToLoseMomentum = gainedThisRound ? false : "checked"
 
-      // TODO: Define and replace the inline styles within the stylesheet
       if (endOfRound <= 0) {
-        noAdvantage += `<img src="${combatant.img}" style = "height: 2rem; border: none; padding-right: 2px; padding-left: 2px; max-width: fit-content;" alt="${combatant.name}" title="${combatant.name}">&nbsp;${combatant.name}</img>`
+        noAdvantage += `<img src="${combatant.img}" style="height: 2rem; border: none; padding-right: 2px; padding-left: 2px; max-width: fit-content;" alt="${combatant.name}" title="${combatant.name}">&nbsp;${combatant.name}</img>`
       } else {
         combatantLine = `
                 <div class="form-group">
-                <input type="checkbox" id="${combatant.tokenId}" name="${combatant.tokenId}" value="${combatant.name}" ${checkToLoseMomentum}> 
-                <img src="${combatant.img}" style = "height: 2rem; vertical-align : middle; border: none; padding-right: 6px; padding-left: 2px; max-width: fit-content;" />
-                <label for="${combatant.tokenId}" style = "text-align: left; border: none;"> <strong>${combatant.name}</strong></label>
-                <label for="${combatant.tokenId}" style = "text-align: left; border: none;"> ${startOfRound} &rarr; ${endOfRound} </label>
+                <input type="checkbox" id="${combatant.tokenId}" name="${combatant.tokenId}" value="${combatant.name}" ${checkToLoseMomentum}>
+                <img src="${combatant.img}" style="height: 2rem; vertical-align: middle; border: none; padding-right: 6px; padding-left: 2px; max-width: fit-content;" />
+                <label for="${combatant.tokenId}" style="text-align: left; border: none;"> <strong>${combatant.name}</strong></label>
+                <label for="${combatant.tokenId}" style="text-align: left; border: none;"> ${startOfRound} &rarr; ${endOfRound} </label>
                 </div>
                 `
         if (gainedThisRound) {
@@ -302,20 +305,17 @@ export default class Advantage {
           label: game.i18n.localize("GMTOOLKIT.Dialog.Advantage.LoseMomentum.Button"),
           action: "reduceAdvantage",
           callback: async (event, button, dialog) => {
-            const response = new foundry.applications.ux
-              .FormDataExtended(button.form).object
+            const response = new foundry.applications.ux.FormDataExtended(button.form).object
 
-            // Reduce advantage for selected combatants
             for (const combatant of combat.combatants) {
               if (response[combatant.tokenId] === combatant.name) {
-                const token = canvas.tokens.placeables
-                  .filter(a => a.id === combatant.tokenId)[0]
+                const token = canvas.tokens.placeables.find(a => a.id === combatant.tokenId)
+                if (!token) continue
                 const result = await this.update(token, "reduce", "loseMomentum")
                 lostAdvantage += `${token.name}: ${result.starting} &rarr; ${result.new} <br/>`
               }
             }
 
-            // Confirm changes made in whisper to GM
             if (lostAdvantage !== "") {
               const chatData = game.wfrp4e.utility.chatDataSetup(lostAdvantage, "gmroll", false)
               chatData.flavor = game.i18n.format("GMTOOLKIT.Message.Advantage.LostMomentum", { combatRound: round })
@@ -334,6 +334,10 @@ export default class Advantage {
   }
 }
 
+/* -------------------------------------------- */
+/* Helper functions                             */
+/* -------------------------------------------- */
+
 async function getOpposedLedger () {
   const combat = game.combats.active
   if (!combat) return {}
@@ -344,6 +348,18 @@ async function setOpposedLedger (ledger) {
   const combat = game.combats.active
   if (!combat) return
   return combat.setFlag(GMToolkit.MODULE_ID, "opposedLedger", ledger)
+}
+
+async function getDualWieldPendingLedger () {
+  const combat = game.combats.active
+  if (!combat) return {}
+  return foundry.utils.deepClone(combat.getFlag(GMToolkit.MODULE_ID, "dualWieldPendingLedger") ?? {})
+}
+
+async function setDualWieldPendingLedger (ledger) {
+  const combat = game.combats.active
+  if (!combat) return
+  return combat.setFlag(GMToolkit.MODULE_ID, "dualWieldPendingLedger", ledger)
 }
 
 function getCombatantTokenUuid (combatant) {
@@ -559,11 +575,165 @@ function resolveOpposedLedgerKey ({
     })
     .sort((a, b) => (b[1]?.updatedAt ?? 0) - (a[1]?.updatedAt ?? 0))
 
-  if (candidates.length > 0) {
-    return candidates[0][0]
+  if (candidates.length > 0) return candidates[0][0]
+  return rawMessageId
+}
+
+function getDualWieldPendingKey (attackerRef, combat = game.combats.active) {
+  const attackerKey =
+    attackerRef?.combatantId
+    ?? attackerRef?.tokenUuid
+    ?? attackerRef?.tokenId
+    ?? attackerRef?.actorId
+    ?? "no-attacker-ref"
+
+  const round = combat?.round ?? 0
+  const turn = combat?.turn ?? 0
+
+  return `${round}__${turn}__${attackerKey}`
+}
+
+function isDualWieldFollowUpAttack (attackerTest) {
+  const title = String(attackerTest?.context?.title ?? "").toLowerCase()
+  if (!title) return false
+
+  const patterns = [
+    "offhand",
+    "secondaria",
+    "secondary hand",
+    "arma secondaria"
+  ]
+
+  return patterns.some(p => title.includes(p))
+}
+
+async function createPendingDualWieldAdvantage ({
+  attackerRef,
+  defenderRef,
+  messageId
+}) {
+  const combat = game.combats.active
+  if (!combat || !attackerRef) return
+
+  const ledger = await getDualWieldPendingLedger()
+  const key = getDualWieldPendingKey(attackerRef, combat)
+
+  ledger[key] = {
+    attackerRef: foundry.utils.deepClone(attackerRef),
+    defenderRef: foundry.utils.deepClone(defenderRef),
+    round: combat.round ?? null,
+    turn: combat.turn ?? null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    messageId,
+    resolved: false
   }
 
-  return rawMessageId
+  await setDualWieldPendingLedger(ledger)
+  GMToolkit.log(true, "Created pending Dual Wield advantage entry.", ledger[key])
+}
+
+async function deletePendingDualWieldAdvantageByKey (key) {
+  if (!key) return
+  const ledger = await getDualWieldPendingLedger()
+  if (!ledger[key]) return
+  delete ledger[key]
+  await setDualWieldPendingLedger(ledger)
+}
+
+async function findPendingDualWieldAdvantageForAttacker (attackerRef) {
+  const combat = game.combats.active
+  if (!combat || !attackerRef) return { key: null, entry: null }
+
+  const ledger = await getDualWieldPendingLedger()
+  const exactKey = getDualWieldPendingKey(attackerRef, combat)
+  if (ledger[exactKey]) return { key: exactKey, entry: ledger[exactKey] }
+
+  const attackerMatchKey =
+    attackerRef?.combatantId
+    ?? attackerRef?.tokenUuid
+    ?? attackerRef?.tokenId
+    ?? attackerRef?.actorId
+    ?? null
+
+  const candidates = Object.entries(ledger)
+    .filter(([, entry]) => {
+      const entryAttackerKey =
+        entry?.attackerRef?.combatantId
+        ?? entry?.attackerRef?.tokenUuid
+        ?? entry?.attackerRef?.tokenId
+        ?? entry?.attackerRef?.actorId
+        ?? null
+
+      return entryAttackerKey === attackerMatchKey
+        && entry?.round === (combat.round ?? null)
+        && entry?.turn === (combat.turn ?? null)
+    })
+    .sort((a, b) => (b[1]?.updatedAt ?? 0) - (a[1]?.updatedAt ?? 0))
+
+  if (candidates.length > 0) {
+    return { key: candidates[0][0], entry: candidates[0][1] }
+  }
+
+  return { key: null, entry: null }
+}
+
+async function resolvePendingDualWieldForCombatant (combatant) {
+  if (!game.user.isUniqueGM) return
+  if (!combatant) return
+  if (!game.settings.get(GMToolkit.MODULE_ID, "automateOpposedTestAdvantage")) return
+  if (game.settings.get("wfrp4e", "useGroupAdvantage")) return
+
+  const combat = game.combats.active
+  if (!combat) return
+
+  const attackerRef = getTokenRefFromCombatant(combatant)
+  if (!attackerRef) return
+
+  const { key, entry } = await findPendingDualWieldAdvantageForAttacker(attackerRef)
+  if (!key || !entry || entry.resolved) return
+
+  const attackerCombatant = getCombatantByTokenRef(entry.attackerRef)
+  const attackerToken = getTokenObjectForCombatant(attackerCombatant)
+  if (!attackerCombatant || !attackerToken) {
+    await deletePendingDualWieldAdvantageByKey(key)
+    return
+  }
+
+  GMToolkit.log(true, "Resolving pending Dual Wield advantage at end of turn.", { key, entry })
+
+  await Advantage.update(attackerToken, 1, "dualWieldPending")
+
+  const ledger = await getDualWieldPendingLedger()
+  if (ledger[key]) {
+    ledger[key].resolved = true
+    ledger[key].resolvedAt = Date.now()
+    await setDualWieldPendingLedger(ledger)
+  }
+
+  await deletePendingDualWieldAdvantageByKey(key)
+}
+
+async function clearStaleDualWieldPendingEntries ({
+  round,
+  turn
+}) {
+  const combat = game.combats.active
+  if (!combat) return
+
+  const ledger = await getDualWieldPendingLedger()
+  let changed = false
+
+  for (const [key, entry] of Object.entries(ledger)) {
+    const isSameRound = entry?.round === round
+    const isSameTurn = entry?.turn === turn
+    if (isSameRound && isSameTurn) continue
+
+    delete ledger[key]
+    changed = true
+  }
+
+  if (changed) await setDualWieldPendingLedger(ledger)
 }
 
 async function reconcileOpposedTestAdvantage ({
@@ -702,7 +872,7 @@ async function reconcileOpposedTestAdvantage ({
   }
 
   if (winnerDelta !== 0) {
-    await Advantage.update(winnerToken, winnerDelta, "opposedLedger")
+    await Advantage.update(winnerToken, winnerDelta, "wfrp4e:opposedTestResult")
   }
 
   entry.lastWinnerSide = winnerSide
@@ -724,22 +894,26 @@ async function reconcileOpposedTestAdvantage ({
   }
 }
 
+/* -------------------------------------------- */
+/* Hooks                                         */
+/* -------------------------------------------- */
+
 Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
   if (!game.user.isUniqueGM) return
 
   GMToolkit.log(false, scriptArgs)
-  if (!scriptArgs.opposedTest.defenderTest.context.unopposed) return // Only apply when Outmanouevring (ie, damage from an unopposed test).
-  if (scriptArgs.opposedTest.attackerTest.preData.dualWielding) return // Exit if this is the first strike when Dual Wielding
+  if (!scriptArgs.opposedTest.defenderTest.context.unopposed) return
+  if (scriptArgs.opposedTest.attackerTest.preData.dualWielding) return
   if (!game.settings.get(GMToolkit.MODULE_ID, "automateDamageAdvantage")) return
   if (!inActiveCombat(scriptArgs.opposedTest.attackerTest.actor)
-    || !inActiveCombat(scriptArgs.opposedTest.defenderTest.actor)) return // Exit if either actor is not in the active combat 
+    || !inActiveCombat(scriptArgs.opposedTest.defenderTest.actor)) return
 
   const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Outmanoeuvre", { actorName: scriptArgs.actor.name, attackerName: scriptArgs.attacker.name, totalWoundLoss: scriptArgs.totalWoundLoss })}`
   const message = uiNotice
   const type = "success"
   const options = { permanent: game.settings.get(GMToolkit.MODULE_ID, "persistAdvantageNotifications"), console: true }
 
-  if (game.user.isGM) { ui.notifications.notify(message, type, options) }
+  if (game.user.isGM) ui.notifications.notify(message, type, options)
 
   const defenderRef = getTokenRefFromTest(scriptArgs.opposedTest?.defenderTest, scriptArgs.actor)
   const attackerRef = getTokenRefFromTest(scriptArgs.opposedTest?.attackerTest, scriptArgs.attacker)
@@ -755,12 +929,10 @@ Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
     return
   }
 
-  // Clear advantage on actor that has taken damage when not using Group Advantage
   if (!game.settings.get("wfrp4e", "useGroupAdvantage")) {
     await Advantage.update(defenderToken, "clear", "wfrp4e:applyDamage")
   }
 
-  // Increase advantage on actor that dealt damage, as long as it has not already been updated for this test
   if (attackerCombatant.getFlag(GMToolkit.MODULE_ID, "advantage")?.outmanoeuvre !== scriptArgs.opposedTest.attackerTest.message.id) {
     await Advantage.update(attackerToken, "increase", "wfrp4e:applyDamage")
 
@@ -791,7 +963,6 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
 
   GMToolkit.log(true, "wfrp4e:opposedTestResult", opposedTest, attackerTest, defenderTest)
 
-  // For Group Advantage, handle tests which should not generate advantage
   if (
     game.settings.get("wfrp4e", "useGroupAdvantage")
     && attackerTest.data?.result?.options?.preventAdvantage === true
@@ -805,9 +976,8 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
   const attackerCombatant = getCombatantByTokenRef(attackerRef)
   const defenderCombatant = getCombatantByTokenRef(defenderRef)
 
-  // CHARGING: keep existing behavior, but token-safe
   if (!game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    if (attackerCombatant && (attackerTest.data.preData?.charging || attackerTest.data.result.other === game.i18n.localize("Charging"))) {
+    if (attackerCombatant && (attackerTest.data?.preData?.charging || attackerTest.data?.result?.other === game.i18n.localize("Charging"))) {
       if (!attackerTest.actor.isOwner) {
         await game.socket.emit(`module.${GMToolkit.MODULE_ID}`, {
           type: "setFlag",
@@ -825,7 +995,7 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
       }
     }
 
-    if (defenderCombatant && (defenderTest.data.preData?.charging || defenderTest.data.result.other === game.i18n.localize("Charging"))) {
+    if (defenderCombatant && (defenderTest.data?.preData?.charging || defenderTest.data?.result?.other === game.i18n.localize("Charging"))) {
       if (!defenderTest.actor.isOwner) {
         await game.socket.emit(`module.${GMToolkit.MODULE_ID}`, {
           type: "setFlag",
@@ -844,9 +1014,7 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
     }
   }
 
-  // WINNING: reconcile the final state for this specific opposed test
   if (defenderTest.context.unopposed) return
-  if (attackerTest.data.result.canDualWield) return
   if (!game.settings.get(GMToolkit.MODULE_ID, "automateOpposedTestAdvantage")) return
 
   const attacker = attackerTest.actor
@@ -857,9 +1025,37 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
     return
   }
 
-  const messageId = getOpposedMessageId(opposedTest, attackerTest, defenderTest)
   const winnerSide = opposedTest?.result?.winner
+  if (!["attacker", "defender"].includes(winnerSide)) return
 
+  const isOpeningDualWieldAttack = attackerTest?.data?.result?.canDualWield === true
+  const isFollowUpDualWieldAttack = isDualWieldFollowUpAttack(attackerTest)
+
+  if (!game.settings.get("wfrp4e", "useGroupAdvantage") && isOpeningDualWieldAttack) {
+    if (winnerSide === "attacker") {
+      const messageId = getOpposedMessageId(opposedTest, attackerTest, defenderTest)
+      await createPendingDualWieldAdvantage({
+        attackerRef,
+        defenderRef,
+        messageId
+      })
+      GMToolkit.log(true, "Dual Wield opening attack won: advantage pending until offhand attack or end of turn.")
+    } else {
+      const { key } = await findPendingDualWieldAdvantageForAttacker(attackerRef)
+      if (key) await deletePendingDualWieldAdvantageByKey(key)
+    }
+    return
+  }
+
+  if (!game.settings.get("wfrp4e", "useGroupAdvantage") && isFollowUpDualWieldAttack) {
+    const { key } = await findPendingDualWieldAdvantageForAttacker(attackerRef)
+    if (key) {
+      await deletePendingDualWieldAdvantageByKey(key)
+      GMToolkit.log(true, "Dual Wield follow-up attack detected: pending opening-attack advantage cleared, resolving final result from offhand attack.")
+    }
+  }
+
+  const messageId = getOpposedMessageId(opposedTest, attackerTest, defenderTest)
   await reconcileOpposedTestAdvantage({
     messageId,
     attackerRef,
@@ -869,26 +1065,24 @@ Hooks.on("wfrp4e:opposedTestResult", async function (opposedTest, attackerTest, 
   })
 })
 
-// Intercept when an actor gets a condition during combat
 Hooks.on("createActiveEffect", async function (conditionEffect) {
-  GMToolkit.log(false, conditionEffect)
-  // GUARDS. Exit if ...
-  if (!game.settings.get(GMToolkit.MODULE_ID, "automateConditionAdvantage")) return // ... not using condition automation
-  if (game.settings.get("wfrp4e", "useGroupAdvantage")) return // ... Group Advantage is in play
-  if (!game.user.isUniqueGM) return // ... not a GM
-  if (!conditionEffect.parent.inCombat) return // ... not in combat
-  if (!conditionEffect.isCondition) return // ... not a system recognised condition
+  if (!game.settings.get(GMToolkit.MODULE_ID, "automateConditionAdvantage")) return
+  if (game.settings.get("wfrp4e", "useGroupAdvantage")) return
+  if (!game.user.isUniqueGM) return
+  if (!conditionEffect.parent.inCombat) return
+  if (!conditionEffect.isCondition) return
+
   const nonConditions = ["dead", "fear", "grappling", "engaged"]
   const condId = conditionEffect.conditionId
-  if (nonConditions.includes(condId)) return // ... not a core rules combat condition
+  if (nonConditions.includes(condId)) return
 
-  // Clear Advantage
-  const token = canvas.tokens.placeables.filter(
+  const token = canvas.tokens.placeables.find(
     t => conditionEffect.parent.id === (t?.actor?.id || t?.document?.id)
-  )[0]
+  )
+  if (!token) return
+
   await Advantage.update(token, "clear", "createActiveEffect")
 
-  // Notification declarations
   const uiNotice = `${game.i18n.format("GMTOOLKIT.Advantage.Automation.Condition", { character: conditionEffect.parent.name, condition: conditionEffect.displayLabel })}`
   const message = uiNotice
   const type = "info"
@@ -896,15 +1090,13 @@ Hooks.on("createActiveEffect", async function (conditionEffect) {
     permanent: game.settings.get(GMToolkit.MODULE_ID, "persistAdvantageNotifications"),
     console: true
   }
-  if (game.user.isGM) { ui.notifications.notify(message, type, options) }
+  if (game.user.isGM) ui.notifications.notify(message, type, options)
 })
 
 Hooks.on("createCombatant", function (combatant) {
-  // ADDING TO COMBAT: clear token Advantage only if enabled, and Group Advantage is not being used.
-  // If Group Advantage is used, the system handles syncing individual advantage with the group
   if (game.user.isUniqueGM && game.settings.get(GMToolkit.MODULE_ID, "clearAdvantageCombatJoin") && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    const token = canvas.tokens.placeables
-      .filter(a => a.id === combatant.tokenId)[0]
+    const token = canvas.tokens.placeables.find(a => a.id === combatant.tokenId)
+    if (!token) return
     Advantage.update(token, "clear", "createCombatant")
     Advantage.unsetFlags([combatant])
   }
@@ -912,41 +1104,58 @@ Hooks.on("createCombatant", function (combatant) {
 
 Hooks.on("deleteCombatant", function (combatant) {
   if (game.user.isUniqueGM && game.settings.get(GMToolkit.MODULE_ID, "clearAdvantageCombatLeave")) {
-    const token = canvas.tokens.placeables
-      .filter(a => a.id === combatant.tokenId)[0]
+    const token = canvas.tokens.placeables.find(a => a.id === combatant.tokenId)
+    if (!token) return
     Advantage.update(token, "clear", "deleteCombatant")
   }
 })
 
 Hooks.on("preUpdateCombat", async function (combat, change) {
-  if (!game.user.isUniqueGM || !combat.combatants.size || !change.round) return
-  if (!(change.round > combat.round)) return // Exit if not advancing combat round, including going backwards through combat
-  if (!combat.started) return // Exit when beginning combat; prevents loseMomentum firing prematurely
+  if (!game.user.isUniqueGM || !combat.combatants.size) return
 
-  // Lose Momentum: proceed only if enabled, and Group Advantage is not being used
-  if (game.settings.get(GMToolkit.MODULE_ID, "promptMomentumLoss")
-    && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    GMToolkit.log(false, "preUpdateCombat: compare Advantage at start and end of round")
-    Advantage.loseMomentum(combat)
+  const isRoundAdvance = Number.isInteger(change.round) && change.round > combat.round
+  const isTurnChange = Number.isInteger(change.turn) && change.turn !== combat.turn
+
+  if (combat.started && (isTurnChange || isRoundAdvance)) {
+    const endingCombatant = combat.turns?.[combat.turn] ?? combat.combatants.contents?.[combat.turn] ?? null
+    if (endingCombatant) {
+      await resolvePendingDualWieldForCombatant(endingCombatant)
+    }
+  }
+
+  if (isRoundAdvance) {
+    if (game.settings.get(GMToolkit.MODULE_ID, "promptMomentumLoss")
+      && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
+      GMToolkit.log(false, "preUpdateCombat: compare Advantage at start and end of round")
+      Advantage.loseMomentum(combat)
+    }
   }
 })
 
 Hooks.on("updateCombat", async function (combat, change) {
-  if (!combat.round || !game.user.isUniqueGM || !combat.combatants.size) return
-  if (!change.round) return // Exit if this isn't the start of a round
+  if (!game.user.isUniqueGM || !combat.combatants.size) return
 
-  // Clear Advantage flags when the combat round changes
-  // Still required when Group Advantage is used because of Opposed Test flags
-  GMToolkit.log(true, "updateCombat: unsetting Advantage flags")
-  const advFlagged = combat.combatants.filter(c => c.getFlag(GMToolkit.MODULE_ID, "advantage"))
-  if (advFlagged.length) await Advantage.unsetFlags(advFlagged)
+  const roundChanged = Number.isInteger(change.round)
+  const turnChanged = Number.isInteger(change.turn)
 
-  GMToolkit.log(false, "updateCombat: Setting startOfRound flag")
-  // Skip individual start of round Advantage tracking if Group Advantage is being used
-  if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    combat.combatants.forEach(async c => {
-      await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
-      GMToolkit.log(false, `${c.name}:  ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
+  if (roundChanged) {
+    GMToolkit.log(true, "updateCombat: unsetting Advantage flags")
+    const advFlagged = combat.combatants.filter(c => c.getFlag(GMToolkit.MODULE_ID, "advantage"))
+    if (advFlagged.length) await Advantage.unsetFlags(advFlagged)
+
+    GMToolkit.log(false, "updateCombat: Setting startOfRound flag")
+    if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
+      for (const c of combat.combatants) {
+        await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
+        GMToolkit.log(false, `${c.name}: ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
+      }
+    }
+  }
+
+  if (turnChanged || roundChanged) {
+    await clearStaleDualWieldPendingEntries({
+      round: combat.round ?? null,
+      turn: combat.turn ?? null
     })
   }
 })
