@@ -917,19 +917,32 @@ async function reconcileOpposedTestAdvantage ({
   }
 }
 
-Hooks.on("renderChatMessage", (message, html) => {
-  const root = html?.[0]
-  if (!root) return
+Hooks.once("ready", () => {
+  if (window.__gmToolkitDualWieldClickBound) return
+  window.__gmToolkitDualWieldClickBound = true
 
-  root.addEventListener("click", async event => {
+  document.addEventListener("click", async event => {
     const control = event.target?.closest?.("button, a")
     if (!control) return
     if (!isDualWieldFollowUpControl(control)) return
 
-    const speaker = message?.speaker ?? message?.message?.speaker ?? null
+    const messageEl = control.closest(".message")
+    const messageId = messageEl?.dataset?.messageId
+    if (!messageId) {
+      GMToolkit.log(true, "Dual Wield follow-up click detected, but no messageId found on chat message element.")
+      return
+    }
+
+    const message = game.messages?.get(messageId)
+    if (!message) {
+      GMToolkit.log(true, `Dual Wield follow-up click detected, but ChatMessage ${messageId} was not found.`)
+      return
+    }
+
+    const speaker = message.speaker ?? null
     const attackerRef = speaker?.token
       ? {
-          actorId: speaker?.actor ?? null,
+          actorId: speaker.actor ?? null,
           combatantId: null,
           tokenId: speaker.token,
           sceneId: speaker.scene ?? game.combats.active?.scene?.id ?? game.scenes.current?.id ?? null,
@@ -937,10 +950,19 @@ Hooks.on("renderChatMessage", (message, html) => {
         }
       : null
 
-    await consumeDualWieldOpeningAdvantage({
+    GMToolkit.log(true, "Dual Wield follow-up click intercepted.", {
+      messageId,
+      datasetAction: control.dataset?.action,
+      speaker,
+      attackerRef
+    })
+
+    const consumed = await consumeDualWieldOpeningAdvantage({
       sourceMessage: message,
       attackerRef
     })
+
+    GMToolkit.log(true, "Dual Wield follow-up consume result:", consumed)
   }, true)
 })
 
