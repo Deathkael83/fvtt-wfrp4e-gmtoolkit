@@ -963,63 +963,13 @@ Hooks.once("ready", () => {
       speaker,
       attackerRef
     })
+
+    const consumed = await consumeDualWieldOpeningAdvantage({
+      attackerRef
+    })
+
+    GMToolkit.log(true, "Dual Wield follow-up consume result:", consumed)
   }, true)
-})
-
-Hooks.on("wfrp4e:createRollDialog", async (dialog) => {
-  if (!game.user.isUniqueGM) return
-  if (game.settings.get("wfrp4e", "useGroupAdvantage")) return
-
-  const actor = dialog?.actor
-  if (!actor) return
-
-  const combat = game.combats.active
-  if (!combat) return
-
-  const combatants = Array.from(combat.combatants).filter(c => c.actor?.id === actor.id)
-  if (!combatants.length) return
-
-  let matchedCombatant = null
-  let matchedEntry = null
-  let matchedKey = null
-
-  const ledger = await getDualWieldLedger()
-
-  for (const combatant of combatants) {
-    const attackerRef = getTokenRefFromCombatant(combatant)
-    if (!attackerRef) continue
-
-    const found = await findDualWieldOpeningAdvantage({ attackerRef })
-    if (found?.key && found?.entry && !found.entry.consumed) {
-      matchedCombatant = combatant
-      matchedEntry = found.entry
-      matchedKey = found.key
-      break
-    }
-  }
-
-  if (!matchedCombatant || !matchedEntry || !matchedKey) return
-
-  const token = getTokenObjectForCombatant(matchedCombatant)
-  if (!token) {
-    await clearDualWieldOpeningAdvantage(matchedKey)
-    return
-  }
-
-  const currentAdvantage = Number(token.actor?.system?.status?.advantage?.value ?? 0)
-  if (currentAdvantage > 0) {
-    await Advantage.update(token, -1, "dualWieldConsume")
-  }
-
-  if (ledger[matchedKey]) {
-    ledger[matchedKey].consumed = true
-    ledger[matchedKey].consumedAt = Date.now()
-    await setDualWieldLedger(ledger)
-  }
-
-  await clearDualWieldOpeningAdvantage(matchedKey)
-
-  GMToolkit.log(true, `Dual Wield opening advantage consumed via createRollDialog for ${token.name}.`)
 })
 
 Hooks.on("wfrp4e:applyDamage", async function (scriptArgs) {
