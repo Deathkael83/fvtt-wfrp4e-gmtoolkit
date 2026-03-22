@@ -957,7 +957,6 @@ Hooks.once("ready", () => {
     GMToolkit.log(true, "Dual Wield follow-up click intercepted.", {
       messageId,
       datasetAction: control.dataset?.action,
-      speaker,
       attackerRef
     })
 
