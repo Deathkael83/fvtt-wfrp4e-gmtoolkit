@@ -623,11 +623,7 @@ async function findDualWieldOpeningAdvantage ({
 } = {}) {
   const ledger = await getDualWieldLedger()
   const combat = game.combats.active
-
-  if (attackerRef && combat) {
-    const exactKey = getDualWieldKey(attackerRef, combat.round, combat.turn)
-    if (ledger[exactKey]) return { key: exactKey, entry: ledger[exactKey] }
-  }
+  if (!combat) return { key: null, entry: null }
 
   const attackerMatchKey =
     attackerRef?.combatantId
@@ -636,29 +632,38 @@ async function findDualWieldOpeningAdvantage ({
     ?? attackerRef?.actorId
     ?? null
 
-  const candidates = Object.entries(ledger)
-    .filter(([, entry]) => {
-      const sameMessage = sourceMessageId && entry?.sourceMessageId === sourceMessageId
-      const entryAttackerKey =
-        entry?.attackerRef?.combatantId
-        ?? entry?.attackerRef?.tokenUuid
-        ?? entry?.attackerRef?.tokenId
-        ?? entry?.attackerRef?.actorId
-        ?? null
+  // 1) Match principale: attackerRef nel turno corrente
+  if (attackerMatchKey) {
+    const candidates = Object.entries(ledger)
+      .filter(([, entry]) => {
+        const entryAttackerKey =
+          entry?.attackerRef?.combatantId
+          ?? entry?.attackerRef?.tokenUuid
+          ?? entry?.attackerRef?.tokenId
+          ?? entry?.attackerRef?.actorId
+          ?? null
 
-      const sameAttackerTurn =
-        combat
-        && attackerMatchKey
-        && entryAttackerKey === attackerMatchKey
-        && entry?.round === (combat.round ?? null)
-        && entry?.turn === (combat.turn ?? null)
+        return entryAttackerKey === attackerMatchKey
+          && entry?.round === (combat.round ?? null)
+          && entry?.turn === (combat.turn ?? null)
+          && !entry?.consumed
+      })
+      .sort((a, b) => (b[1]?.updatedAt ?? b[1]?.createdAt ?? 0) - (a[1]?.updatedAt ?? a[1]?.createdAt ?? 0))
 
-      return sameMessage || sameAttackerTurn
-    })
-    .sort((a, b) => (b[1]?.updatedAt ?? 0) - (a[1]?.updatedAt ?? 0))
+    if (candidates.length > 0) {
+      return { key: candidates[0][0], entry: candidates[0][1] }
+    }
+  }
 
-  if (candidates.length > 0) {
-    return { key: candidates[0][0], entry: candidates[0][1] }
+  // 2) Fallback secondario: messageId, solo se disponibile
+  if (sourceMessageId) {
+    const candidates = Object.entries(ledger)
+      .filter(([, entry]) => entry?.sourceMessageId === sourceMessageId && !entry?.consumed)
+      .sort((a, b) => (b[1]?.updatedAt ?? b[1]?.createdAt ?? 0) - (a[1]?.updatedAt ?? a[1]?.createdAt ?? 0))
+
+    if (candidates.length > 0) {
+      return { key: candidates[0][0], entry: candidates[0][1] }
+    }
   }
 
   return { key: null, entry: null }
@@ -939,15 +944,14 @@ Hooks.once("ready", () => {
       return
     }
 
-    const speaker = message.speaker ?? null
-    const attackerRef = speaker?.token
-      ? {
-          actorId: speaker.actor ?? null,
-          combatantId: null,
-          tokenId: speaker.token,
-          sceneId: speaker.scene ?? game.combats.active?.scene?.id ?? game.scenes.current?.id ?? null,
-          tokenUuid: null
-        }
+    const combat = game.combats.active
+    const activeCombatant =
+      combat?.combatant
+      ?? combat?.turns?.[combat?.turn ?? -1]
+      ?? null
+
+    const attackerRef = activeCombatant
+      ? getTokenRefFromCombatant(activeCombatant)
       : null
 
     GMToolkit.log(true, "Dual Wield follow-up click intercepted.", {
@@ -957,15 +961,8 @@ Hooks.once("ready", () => {
       attackerRef
     })
 
-    GMToolkit.log(true, "Dual Wield follow-up click intercepted.", {
-      messageId,
-      datasetAction: control.dataset?.action,
-      speaker,
-      attackerRef
-    })
-
     const consumed = await consumeDualWieldOpeningAdvantage({
-      sourceMessage: message
+      attackerRef
     })
 
     GMToolkit.log(true, "Dual Wield follow-up consume result:", consumed)
