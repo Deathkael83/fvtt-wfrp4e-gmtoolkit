@@ -803,17 +803,6 @@ async function clearResidualDualWielderEffectsFromCombat (combat) {
   }
 
   for (const actor of actors.values()) {
-    let removed = false
-
-    // Via preferenziale: condition di sistema WFRP
-    if (typeof actor.hasCondition === "function" && actor.hasCondition("dualwielder")) {
-      if (typeof actor.removeCondition === "function") {
-        await actor.removeCondition("dualwielder")
-        removed = true
-      }
-    }
-
-    // Fallback: rimozione ActiveEffect residui
     const effectsToRemove = actor.effects
       .filter(effect => isResidualDualWielderEffect(effect))
       .map(effect => effect.id)
@@ -821,10 +810,6 @@ async function clearResidualDualWielderEffectsFromCombat (combat) {
 
     if (effectsToRemove.length) {
       await actor.deleteEmbeddedDocuments("ActiveEffect", effectsToRemove)
-      removed = true
-    }
-
-    if (removed) {
       GMToolkit.log(true, `Residual Dual Wielder effects cleared for ${actor.name}.`)
     }
   }
