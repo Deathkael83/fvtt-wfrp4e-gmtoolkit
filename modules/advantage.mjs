@@ -777,6 +777,61 @@ async function cleanupStaleDualWieldLedger () {
   if (changed) await setDualWieldLedger(ledger)
 }
 
+function isResidualDualWielderEffect(effect) {
+  const name = String(effect?.name ?? "").toLowerCase().trim()
+  const label = String(effect?.label ?? "").toLowerCase().trim()
+  const conditionId = String(effect?.conditionId ?? "").toLowerCase().trim()
+
+  const statuses = Array.from(effect?.statuses ?? []).map(s => String(s).toLowerCase().trim())
+
+  return (
+    name === "dual wielder"
+    || label === "dual wielder"
+    || conditionId === "dualwielder"
+    || statuses.includes("dualwielder")
+  )
+}
+
+async function clearResidualDualWielderEffectsFromCombat (combat) {
+  if (!combat) return
+
+  const actors = new Map()
+
+  for (const combatant of combat.combatants) {
+    const actor = combatant?.actor
+    if (actor?.id) actors.set(actor.id, actor)
+  }
+
+  for (const actor of actors.values()) {
+    let removed = false
+
+    // Via preferenziale: condition di sistema WFRP
+    if (typeof actor.hasCondition === "function" && actor.hasCondition("dualwielder")) {
+      if (typeof actor.removeCondition === "function") {
+        await actor.removeCondition("dualwielder")
+        removed = true
+      }
+    }
+
+    // Fallback: rimozione ActiveEffect residui
+    const effectsToRemove = actor.effects
+      .filter(effect => isResidualDualWielderEffect(effect))
+      .map(effect => effect.id)
+      .filter(Boolean)
+
+    if (effectsToRemove.length) {
+      await actor.deleteEmbeddedDocuments("ActiveEffect", effectsToRemove)
+      removed = true
+    }
+
+    if (removed) {
+      GMToolkit.log(true, `Residual Dual Wielder effects cleared for ${actor.name}.`)
+    }
+  }
+
+  await setDualWieldLedger({})
+}
+
 function normalizeActionText (value) {
   return String(value ?? "")
     .toLowerCase()
@@ -1234,8 +1289,18 @@ Hooks.on("preUpdateCombat", async function (combat, change) {
   }
 })
 
+Hooks.on("deleteCombat", async function (combat) {
+  if (!game.user.isUniqueGM) return
+  await clearResidualDualWielderEffectsFromCombat(combat)
+})
+
 Hooks.on("updateCombat", async function (combat, change) {
   if (!combat.round || !game.user.isUniqueGM || !combat.combatants.size) return
+  
+    // Inizio combattimento: pulizia residui Dual Wielder da combattimenti interrotti
+  if (change.round === 1 && change.turn === 0) {
+    await clearResidualDualWielderEffectsFromCombat(combat)
+  }
 
   if (change.turn || change.round) {
     await cleanupStaleDualWieldLedger()
