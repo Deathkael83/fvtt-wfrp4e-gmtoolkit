@@ -1310,16 +1310,16 @@ Hooks.on("updateCombat", async function (combat, change) {
 
   // Clear Advantage flags when the combat round changes
   // Still required when Group Advantage is used because of Opposed Test flags
-  GMToolkit.log(true, "updateCombat: unsetting Advantage flags")
-  const advFlagged = combat.combatants.filter(c => c.getFlag(GMToolkit.MODULE_ID, "advantage"))
-  if (advFlagged.length) await Advantage.unsetFlags(advFlagged)
+//  GMToolkit.log(true, "updateCombat: unsetting Advantage flags")
+//  const advFlagged = combat.combatants.filter(c => c.getFlag(GMToolkit.MODULE_ID, "advantage"))
+//  if (advFlagged.length) await Advantage.unsetFlags(advFlagged)
 
   GMToolkit.log(false, "updateCombat: Setting startOfRound flag")
   // Skip individual start of round Advantage tracking if Group Advantage is being used
-//  if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
-//    combat.combatants.forEach(async c => {
-//      await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
-//      GMToolkit.log(false, `${c.name}:  ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
-//    })
-//  }
+  if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
+    combat.combatants.forEach(async c => {
+      await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
+      GMToolkit.log(false, `${c.name}:  ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
+    })
+  }
 })
