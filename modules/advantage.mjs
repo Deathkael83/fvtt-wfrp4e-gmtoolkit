@@ -1316,10 +1316,10 @@ Hooks.on("updateCombat", async function (combat, change) {
 
   GMToolkit.log(false, "updateCombat: Setting startOfRound flag")
   // Skip individual start of round Advantage tracking if Group Advantage is being used
-  if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
-    combat.combatants.forEach(async c => {
-      await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
-      GMToolkit.log(false, `${c.name}:  ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
-    })
-  }
+//  if (combat.turns && combat.isActive && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
+//    combat.combatants.forEach(async c => {
+//      await c.setFlag(GMToolkit.MODULE_ID, "sorAdvantage", c.token.actor.system.status.advantage.value)
+//      GMToolkit.log(false, `${c.name}:  ${c.getFlag(GMToolkit.MODULE_ID, "sorAdvantage")}`)
+//    })
+//  }
 })
