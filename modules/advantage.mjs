@@ -1242,14 +1242,34 @@ Hooks.on("createActiveEffect", async function (conditionEffect) {
   if (game.user.isGM) { ui.notifications.notify(message, type, options) }
 })
 
-Hooks.on("createCombatant", function (combatant) {
+Hooks.on("createCombatant", async function (combatant) {
   // ADDING TO COMBAT: clear token Advantage only if enabled, and Group Advantage is not being used.
   // If Group Advantage is used, the system handles syncing individual advantage with the group
   if (game.user.isUniqueGM && game.settings.get(GMToolkit.MODULE_ID, "clearAdvantageCombatJoin") && !game.settings.get("wfrp4e", "useGroupAdvantage")) {
     const token = canvas.tokens.placeables
       .filter(a => a.id === combatant.tokenId)[0]
-    Advantage.update(token, "clear", "createCombatant")
-    Advantage.unsetFlags([combatant])
+
+    if (token) {
+      await Advantage.update(token, "clear", "createCombatant")
+    }
+
+    await Advantage.unsetFlags([combatant])
+  }
+
+  // Clear residual Dual Wielder on entry to combat
+  if (game.user.isUniqueGM) {
+    const actor = combatant?.actor
+    if (!actor) return
+
+    const effectsToRemove = actor.effects
+      .filter(effect => isResidualDualWielderEffect(effect))
+      .map(effect => effect.id)
+      .filter(Boolean)
+
+    if (effectsToRemove.length) {
+      await actor.deleteEmbeddedDocuments("ActiveEffect", effectsToRemove)
+      GMToolkit.log(true, `Residual Dual Wielder effects cleared on combatant creation for ${actor.name}.`)
+    }
   }
 })
 
@@ -1282,11 +1302,6 @@ Hooks.on("deleteCombat", async function (combat) {
 Hooks.on("updateCombat", async function (combat, change) {
   if (!combat.round || !game.user.isUniqueGM || !combat.combatants.size) return
   
-    // Inizio combattimento: pulizia residui Dual Wielder da combattimenti interrotti
-  if (change.round === 1 && change.turn === 0) {
-    await clearResidualDualWielderEffectsFromCombat(combat)
-  }
-
   if (change.turn || change.round) {
     await cleanupStaleDualWieldLedger()
   }
